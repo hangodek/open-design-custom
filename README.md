@@ -1,41 +1,53 @@
-<h1 align="center">OpenDesign: The open-source Claude Design alternative</h1>
-
-> ⚡ **[OpenDesign Cloud — the official model service.](https://open-design.ai/zh/pricing/)** One recharge to use both agent and image models inside OpenDesign: GPT, Claude, and DeepSeek for agents; GPT Image 2.0, Seedream 5.0 Pro, and Nano Banana 2.0 for images.
->
-> 🚀 **[DeepSeek V4 Flash and V4 Pro are now available.](https://open-design.ai/zh/pricing/)** Put top-tier intelligence to work across prototypes, decks, design systems, and everyday agent tasks. OpenDesign members can use both models without limits for two weeks, directly inside the app.
->
-> 🧩 **[DeepSeek Harness is now supported.](https://open-design.ai/zh/agents/deepseek-harness-design/)** Connect DeepSeek's official `dsh` agent harness to OpenDesign as a native runtime, with structured thinking, tool calls, model discovery, cancellation, and session resume. Generated files stay in the OpenDesign workflow for live preview and delivery.
+<h1 align="center">OpenDesign (Custom Independent Edition)</h1>
 
 <p align="center">
-  <img src="https://repo-assets.open-design.ai/resources/images/hero.png" alt="OpenDesign hero banner — the headline &quot;The open-source Claude Design alternative&quot; over a classical scene of columns and robed figures on a digital-code backdrop, with stat cards for design systems, plugins, coding agents, and media providers" width="100%" />
+  <b>The local-first, developer-driven OpenDesign distribution. Built for speed, complete independence, and seamless in-place design iteration.</b>
 </p>
 
 <p align="center">
-  <a href="https://open-design.ai/?utm_source=github&utm_medium=referral&utm_content=readme_website">Website</a> ·
-  <a href="https://open-design.ai/?utm_source=github&utm_medium=referral&utm_content=readme_download">Download</a> ·
-  <a href="https://open-design.ai/cloud/?utm_source=github&utm_medium=referral&utm_content=readme_cloud">OpenDesign Cloud</a> ·
-  <a href="https://discord.gg/mHAjSMV6gz">Discord</a> ·
-  <a href="https://x.com/OpenDesignHQ">Follow @OpenDesignHQ</a>
-</p>
-
-<p align="center">
-  <a href="https://github.com/nexu-io/open-design/releases"><img alt="release" src="https://img.shields.io/github/v/release/nexu-io/open-design?style=flat&color=blueviolet&label=release&include_prereleases&display_name=tag" /></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat" /></a>
-  <a href="https://discord.gg/mHAjSMV6gz"><img alt="discord" src="https://img.shields.io/discord/1479002485040480266?style=flat&logo=discord&logoColor=white&label=discord&color=5865F2&cacheSeconds=3600" /></a>
-  <a href="QUICKSTART.md"><img alt="quickstart" src="https://img.shields.io/badge/quickstart-3%20commands-green?style=flat" /></a>
+  <a href="QUICKSTART.md"><img alt="quickstart" src="https://img.shields.io/badge/quickstart-pnpm%20dev-green?style=flat" /></a>
+  <img alt="edition" src="https://img.shields.io/badge/edition-independent%20custom-orange?style=flat" />
+  <img alt="local-first" src="https://img.shields.io/badge/workflow-local--first-blueviolet?style=flat" />
 </p>
 
-<p align="center"><b>English</b> · <a href="docs/i18n/README.es.md">Español</a> · <a href="docs/i18n/README.pt-BR.md">Português</a> · <a href="docs/i18n/README.de.md">Deutsch</a> · <a href="docs/i18n/README.fr.md">Français</a> · <a href="docs/i18n/README.zh-CN.md">简体中文</a> · <a href="docs/i18n/README.zh-TW.md">繁體中文</a> · <a href="docs/i18n/README.ko.md">한국어</a> · <a href="docs/i18n/README.ja-JP.md">日本語</a> · <a href="docs/i18n/README.ar.md">العربية</a> · <a href="docs/i18n/README.ru.md">Русский</a> · <a href="docs/i18n/README.uk.md">Українська</a> · <a href="docs/i18n/README.tr.md">Türkçe</a> · <a href="docs/i18n/README.th.md">ภาษาไทย</a></p>
+---
+
+## Custom Edition Overview
+
+This repository is an independent, community-maintained edition of OpenDesign focused on local-first performance, developer autonomy, and streamlined workflow execution.
+
+### Key Enhancements & Changes
+
+- **Streamlined Developer Lifecycle**: Replaced verbose CLI calls with ergonomic root scripts: `pnpm dev` (starts daemon and web runtime), `pnpm status`, `pnpm restart`, and `pnpm stop`.
+- **In-Place File Iteration & Restored Rollbacks**: Resolved issues where generation created fragmented numbered files (`1.html`, `2.html`, `landing-v2.html`). The model iteratively updates existing design artifacts in-place, ensuring that OpenDesign's built-in file history and rollback capabilities remain fully functional.
+- **Native Local Runtime Support**: Direct, containerless execution support across Linux, macOS, and WSL without mandatory Docker encapsulation.
+- **Strict Custom Instruction Priority**: User-level and project-level instructions maintain definitive priority over system prompts and downstream presets.
+- **Unrestricted Local & BYOK Execution**: Full compatibility with 26+ local agent CLIs (DeepSeek, Claude Code, Codex, OpenCode, Cursor, Kimi, Hermes, Antigravity, etc.) and direct Bring-Your-Own-Key (BYOK) providers.
+
+### Quick Commands
+
+```bash
+# Start Daemon + Web UI
+pnpm dev
+
+# Check Runtime Status
+pnpm status
+
+# Direct CLI Access
+pnpm od --help
+
+# Stop Background Processes
+pnpm stop
+```
 
 ---
 
 ## What is OpenDesign
 
-🎨 **The open-source Claude Design alternative.** &nbsp;🖥️ **Local-first native desktop app for macOS and Windows.** &nbsp;⚡ **Composable skills, brand-grade `DESIGN.md` design systems, and ready-to-use plugins.** &nbsp;🖼️ Generates **web · desktop · mobile prototypes**, **live dashboards / artifacts**, **decks**, **images**, **video**, plus **HyperFrames** motion graphics. 🔒 Sandboxed iframe preview · HTML / PDF / PPTX / MP4 export. &nbsp;🤖 **Runs on DeepSeek Harness (`dsh`) · Claude Code · OpenClaw · Codex · Cursor · OpenCode · Qwen · Copilot · Amp · Hermes · Kimi · Antigravity and 26 distinct local CLI executables**, or any OpenAI-compatible endpoint via BYOK.
+OpenDesign is an open-source, local-first design environment for macOS and Linux. It combines composable skills, `DESIGN.md` design systems, and modular plugins to generate web, desktop, and mobile prototypes, live dashboards, slide decks, images, video, and HyperFrames motion graphics with a sandboxed preview and multi-format export (HTML, PDF, PPTX, MP4).
 
-OpenDesign is what you get when the **agent-native** loop Anthropic shipped with Claude Design — discover the brief, lock the direction, stream the artifact, critique, deliver — stops being closed and becomes a **filesystem of functional skills, rendering design templates, design systems, and plugins** that the coding agents already on your laptop can read, write, and remix. Your CLI becomes the design engine, your laptop becomes the studio, and your team's `DESIGN.md` becomes the brand contract.
-
-It's also the **Figma alternative for the agent era** — instead of pushing pixels on a canvas, it delivers single-page artifacts in real CSS, real fonts, real components, exported straight to HTML / PDF / PPTX / MP4 — already shaped by your design system, already runnable inside the agent you use every day.
+Powered by native runtime adapters and MCP integrations, OpenDesign connects directly with local code agents including DeepSeek Harness (`dsh`), Claude Code, OpenClaw, Codex, Cursor, OpenCode, Qwen, Copilot, Amp, Hermes, Kimi, Antigravity, and other CLI tools, as well as OpenAI-compatible endpoints via BYOK.
 
 
 ---
