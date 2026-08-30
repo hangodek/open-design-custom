@@ -10,7 +10,7 @@
     "od": "./apps/daemon/bin/od.mjs"
   },
   "scripts": {
-    "dev": "pnpm exec tools-dev start web",
+    "dev": "pnpm exec tools-dev run web",
     "dev:web": "pnpm exec tools-dev run web",
     "dev:daemon": "pnpm exec tools-dev run daemon",
     "dev:desktop": "pnpm exec tools-dev start desktop",
