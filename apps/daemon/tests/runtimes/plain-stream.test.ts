@@ -105,6 +105,38 @@ describe('plain stream artifact extraction', () => {
     }
   });
 
+  it('creates a new distinct html file when the artifact represents a different page', async () => {
+    const projectsRoot = await mkdtemp(path.join(tmpdir(), 'od-plain-stream-'));
+    try {
+      await mkdir(path.join(projectsRoot, 'project-1'), { recursive: true });
+      await writeFile(path.join(projectsRoot, 'project-1', 'login.html'), '<!doctype html><html><body>Login</body></html>');
+
+      const written = await persistPlainStreamArtifacts({
+        projectsRoot,
+        projectId: 'project-1',
+        stdout: [
+          '<artifact identifier="landing" title="Landing Page">',
+          '<!doctype html><html><body>Landing Page Content</body></html>',
+          '</artifact>',
+        ].join(''),
+        writeProjectFile: writeProjectFile as any,
+      });
+
+      expect(written).toHaveLength(1);
+      expect(written[0]).toMatchObject({
+        name: 'landing.html',
+        artifactType: 'text/html',
+      });
+      // Both files should exist in the project
+      await expect(readFile(path.join(projectsRoot, 'project-1', 'login.html'), 'utf8'))
+        .resolves.toContain('<body>Login</body>');
+      await expect(readFile(path.join(projectsRoot, 'project-1', 'landing.html'), 'utf8'))
+        .resolves.toContain('<body>Landing Page Content</body>');
+    } finally {
+      await rm(projectsRoot, { recursive: true, force: true });
+    }
+  });
+
   it('disambiguates duplicate artifact names generated within the same run', async () => {
     const projectsRoot = await mkdtemp(path.join(tmpdir(), 'od-plain-stream-'));
     try {

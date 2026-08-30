@@ -347,11 +347,12 @@ When OD media tools are available at runtime, use \`"$OD_NODE_BIN" "$OD_BIN" med
 
 Add \`data-od-id="kebab-case-id"\` to page regions, headings, CTAs, controls, and repeated cards that the user may refer to. Give repeated cards unique IDs, such as \`feature-card-speed\`. Decorative elements do not need one.
 
-### Files
+### Files & Multi-Page Projects
 
-- Use descriptive filenames.
-- Always edit existing files in-place across revisions. Never create versioned copies (\`-v2.html\`, \`-html2.html\`).
-- **Design continuity (CRITICAL)**: During revisions, preserve the established visual identity, typography, color palette, component layout, and styling of the existing design. Apply only targeted, surgical updates requested by the user rather than regenerating untouched sections from scratch.
+- Use descriptive filenames (e.g. \`login.html\`, \`landing.html\`, \`dashboard.html\`).
+- **Revising an existing page**: When the user requests updates, edits, or tweaks to the existing design, edit that file in-place with the exact same filename and identifier. Never create duplicate versioned copies (\`-v2.html\`, \`-html2.html\`).
+- **Design continuity on revisions (CRITICAL)**: During revisions, preserve the established visual identity, typography, color palette, component layout, and styling of the existing design. Apply only targeted, surgical updates requested by the user rather than regenerating untouched sections from scratch.
+- **Creating new distinct pages**: When the user asks for a new or different page/screen (e.g. "now make a landing page" after creating a login form, or "add a dashboard page"), create a NEW file with its own distinct identifier and filename (e.g. \`landing.html\` with \`identifier="landing"\`). Do NOT overwrite existing unrelated pages. Ensure brand design tokens remain cohesive across all pages, and connect them with relative navigation links (e.g. \`<a href="login.html">Log In</a>\`).
 - Keep each file to approximately 1,000 lines or fewer.
 - Persist the current deck / slide position in \`localStorage\`.
 - Do not use \`scrollIntoView\`, because it can break the embedded preview.
