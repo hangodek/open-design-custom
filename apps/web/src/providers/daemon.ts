@@ -62,6 +62,7 @@ function detectClientType(): 'desktop' | 'web' | 'unknown' {
 }
 import { parseSseFrame } from './sse';
 import {
+  extractRawArtifactBlocks,
   summarizeArtifactsForTranscript,
   type PersistedArtifactFileRef,
 } from '../artifacts/strip';
@@ -242,9 +243,15 @@ export function sanitizePriorAssistantTurnForTranscript(
   );
   // For tool-calling agents with disk access, summarize prior-turn `<artifact>` HTML
   // to avoid re-sending large documents. For plain-stream and API agents (no disk read tools),
-  // preserve the artifact body so the model has the complete existing code to revise in-place.
+  // preserve the artifact body so the model has the complete existing code to revise in-place,
+  // but strip verbose surrounding chat prose to prevent models from parroting past summaries.
   if (!options?.preserveArtifacts) {
     sanitized = summarizeArtifactsForTranscript(sanitized, persistedArtifactFiles);
+  } else {
+    const rawArtifacts = extractRawArtifactBlocks(sanitized);
+    if (rawArtifacts.length > 0) {
+      sanitized = rawArtifacts.join('\n\n');
+    }
   }
   return sanitized;
 }

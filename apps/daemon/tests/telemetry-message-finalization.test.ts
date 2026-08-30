@@ -296,7 +296,8 @@ describe('Langfuse message finalization gate', () => {
     // Default behavior unchanged (backward compatibility for every
     // adapter that doesn't set resumesSessionViaCli).
     const kept = composeChatUserRequestForAgent(transcript, currentPrompt);
-    expect(kept).toBe(transcript);
+    expect(kept).toContain(transcript);
+    expect(kept).toContain('## Active user request (execute this turn)');
   });
 
   it('uses a headless message as the latest native-resume turn when currentPrompt is absent', () => {

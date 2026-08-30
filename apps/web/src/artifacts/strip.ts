@@ -74,6 +74,29 @@ export function stripArtifact(content: string): string {
   return result;
 }
 
+/**
+ * Extract all real `<artifact ...>...</artifact>` blocks from `content`.
+ */
+export function extractRawArtifactBlocks(content: string): string[] {
+  const blocks: string[] = [];
+  let cursor = 0;
+  while (cursor <= content.length) {
+    const tail = content.slice(cursor);
+    const { ranges: baseRanges, unclosedFenceStart } = computeSkipRanges(tail);
+    const ranges: Range[] =
+      unclosedFenceStart !== null ? [...baseRanges, [unclosedFenceStart, tail.length]] : baseRanges;
+    const open = findRealOpen(tail, 0, ranges);
+    if (open === -1) break;
+    const closeTag = tail.indexOf('>', open);
+    if (closeTag === -1) break;
+    const end = findUnskipped(tail, CLOSE, closeTag, ranges);
+    if (end === -1) break;
+    blocks.push(tail.slice(open, end + CLOSE.length));
+    cursor += end + CLOSE.length;
+  }
+  return blocks;
+}
+
 function findSingleRecoverableHtmlFence(content: string): MarkdownFenceRange | null {
   HTML_FENCE_RE.lastIndex = 0;
   let recovered: MarkdownFenceRange | null = null;
