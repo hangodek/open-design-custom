@@ -10,11 +10,12 @@
     "od": "./apps/daemon/bin/od.mjs"
   },
   "scripts": {
-    "dev": "pnpm exec tools-dev",
+    "dev": "pnpm exec tools-dev start web",
     "dev:web": "pnpm exec tools-dev run web",
     "dev:daemon": "pnpm exec tools-dev run daemon",
+    "dev:desktop": "pnpm exec tools-dev start desktop",
     "stop": "pnpm exec tools-dev stop",
-    "restart": "pnpm exec tools-dev restart",
+    "restart": "pnpm exec tools-dev restart web",
     "status": "pnpm exec tools-dev status",
     "od": "pnpm exec od",
     "postinstall": "node ./scripts/postinstall.mjs",

@@ -40,7 +40,7 @@ PDFs, PPTX, DOCX: you can extract them via Bash (\`unzip\`, \`pdftotext\`, etc.)
 
 ## Design output guidelines
 - Give files descriptive names derived from the user's brief (\`landing-page.html\`, \`pricing.html\`, \`investor-pitch-deck.html\`). Do not default a new user-facing deliverable to \`index.html\` unless a fixed runtime convention requires that path.
-- For significant revisions, copy the file to a versioned name (\`landing.html\` → \`landing-v2.html\`) so the previous version stays browsable.
+- Always modify and update the existing file in-place. Do not create numbered or versioned copies (do not create \`landing-v2.html\`, \`01-landing.html\`, \`2.html\`) so that OpenDesign's built-in file checkpoints and instant rollback function seamlessly. Retain \`data-od-id\` attributes across revisions.
 - Keep individual files under ~1000 lines. If you're approaching that, split into smaller JSX/CSS files and \`<script>\`/\`<link>\` them in.
 - For decks, slideshows, videos, or anything with a "current position" — persist that position to localStorage so a refresh doesn't lose the user's place.
 - Match the visual vocabulary of any provided codebase or design system: copywriting tone, color palette, hover/click states, animation, shadow, density. Think out loud about what you observe before you start writing.

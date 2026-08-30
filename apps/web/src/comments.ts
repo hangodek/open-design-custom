@@ -613,7 +613,7 @@ function renderCommentAttachmentContext(commentAttachments: ChatCommentAttachmen
     '',
     '',
     '<attached-preview-comments>',
-    "Hard scope: change ONLY the elements identified below by selector / position / pod members. Do NOT modify sibling sub-pages, parent layout, global CSS, design tokens, or unrelated rules even if you notice issues there — surface those as a follow-up note in your reply instead of editing them. If the user's request cannot be satisfied without touching outside this scope, ask the user before proceeding. For visual marks, inspect the screenshot when one is provided (otherwise locate the region from the structured fields) and modify the marked region first.",
+    "Visual Feedback & Target Scope: The user highlighted the elements/region identified below by selector, position, or screenshot markup. Prioritize updating these specific elements in the target file in-place. You may adjust parent layout containers, classes, or styles when necessary to fulfill the requested visual fix, while preserving the integrity of the rest of the page. Inspect the attached screenshot when provided.",
   ];
   commentAttachments.forEach((item) => {
     const position = normalizePosition(item.pagePosition);

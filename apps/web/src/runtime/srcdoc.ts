@@ -713,6 +713,27 @@ function injectSnapshotBridge(doc: string): string {
         .replace(/@import[^;]+;/gi, '')
         .replace(/@font-face\\s*\\{[^}]*\\}/gi, '');
     }
+    var images = cloneRoot.querySelectorAll('img');
+    for (var im = 0; im < images.length; im++) {
+      try {
+        var src = images[im].getAttribute('src') || '';
+        if (src && !src.startsWith('data:')) {
+          var origImg = originalRoot.querySelector('img[src="' + CSS.escape(src) + '"]');
+          if (origImg && origImg.complete && origImg.naturalWidth > 0) {
+            var hCanvas = document.createElement('canvas');
+            hCanvas.width = origImg.naturalWidth;
+            hCanvas.height = origImg.naturalHeight;
+            var hCtx = hCanvas.getContext('2d');
+            if (hCtx) {
+              hCtx.drawImage(origImg, 0, 0);
+              images[im].setAttribute('src', hCanvas.toDataURL('image/png'));
+            }
+          }
+        }
+      } catch (_) {
+        images[im].removeAttribute('src');
+      }
+    }
   }
   function pruneHiddenSnapshotNodes(originalRoot, cloneRoot){
     var originals = originalRoot.querySelectorAll('*');

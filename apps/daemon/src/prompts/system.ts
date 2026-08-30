@@ -1615,7 +1615,7 @@ function renderMetadataBlock(
   }
   if (!factsOnly && (metadata.kind === 'prototype' || metadata.kind === 'template' || metadata.kind === 'other')) {
     lines.push(
-      '- **screen-file-first rule**: each distinct user-facing screen or surface MUST be delivered as its own HTML file unless the user explicitly asks for a single-page scroll or single-file artifact. Do not combine landing pages, product app screens, dashboards, history, pricing, settings, mobile app, tablet app, desktop app, or OS widget surfaces into one long page. Use `index.html` as a launcher/overview that links to screen files when more than one screen exists; it may summarize the product and show screen cards, but it must not contain the full design for every screen.',
+      '- **in-place artifact rule**: build and refine the active design artifact in-place. If multiple views or screens are needed, you may structure them as navigable multi-view SPA tabs/sections within the primary artifact or create dedicated sub-pages when requested, but always preserve the active canonical artifact and update it in-place across revisions.',
     );
     lines.push(
       '- **product-realism rule**: final artifacts must look like real end-user product UI. Do not render project metadata, screen counts, target counts, state counts, "demo only" labels, "settings" panels for choosing platforms, "full design target" badges, viewport/device selector controls, theme/style knobs, platform output maps, behavior-spec sections, or design-process cards inside the product unless the user explicitly asks for a design spec/dashboard. Any navigation/tabs inside the artifact must be real product navigation, not designer controls for switching generated mockups.',
