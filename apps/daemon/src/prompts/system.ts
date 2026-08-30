@@ -1607,7 +1607,7 @@ function renderMetadataBlock(
   }
   if (factsOnly && (metadata.kind === 'prototype' || metadata.kind === 'template' || metadata.kind === 'other')) {
     lines.push(
-      '- **screen files**: each distinct user-facing screen ships as its own HTML file (`index.html` = launcher/overview when several exist) unless the user asks for a single page.',
+      '- **in-place artifact rule**: build and refine the active design artifact in-place. When revising, edit the existing file directly without creating numbered copies (`v2.html`, `-html2.html`).',
     );
     lines.push(
       '- **product depth**: build real product UI with the domain\'s in-app modules and working interactions (tabs, dialogs, filters, validation, playback) — not static screenshot mockups.',
@@ -1615,7 +1615,7 @@ function renderMetadataBlock(
   }
   if (!factsOnly && (metadata.kind === 'prototype' || metadata.kind === 'template' || metadata.kind === 'other')) {
     lines.push(
-      '- **in-place artifact rule**: build and refine the active design artifact in-place. If multiple views or screens are needed, you may structure them as navigable multi-view SPA tabs/sections within the primary artifact or create dedicated sub-pages when requested, but always preserve the active canonical artifact and update it in-place across revisions.',
+      '- **in-place artifact rule (CRITICAL)**: Always modify and refine existing files in-place. Never create versioned copies (do not create `login-v2.html`, `login-html2.html`, `2.html`, etc.) when responding to changes or revisions. The live preview, checkpoint rollback system, and inspect tools rely on preserving the canonical filename across all revisions.',
     );
     lines.push(
       '- **product-realism rule**: final artifacts must look like real end-user product UI. Do not render project metadata, screen counts, target counts, state counts, "demo only" labels, "settings" panels for choosing platforms, "full design target" badges, viewport/device selector controls, theme/style knobs, platform output maps, behavior-spec sections, or design-process cards inside the product unless the user explicitly asks for a design spec/dashboard. Any navigation/tabs inside the artifact must be real product navigation, not designer controls for switching generated mockups.',

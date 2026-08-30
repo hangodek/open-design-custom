@@ -351,11 +351,11 @@ describe('composeSystemPrompt — slim payload gates (metadata facts / memory / 
   it('renders the metadata block as a fact sheet under slim', () => {
     const slim = composeSystemPrompt(base);
     expect(slim).toContain('## Project metadata');
-    expect(slim).toContain('- **screen files**:');
+    expect(slim).toContain('- **in-place artifact rule**:');
     expect(slim).toContain('- **product depth**:');
     // Classic doctrine bullets stay out of the facts variant…
     for (const rule of [
-      'screen-file-first rule',
+      'in-place artifact rule (CRITICAL)',
       'product-realism rule',
       'visual-system rule',
       'CJX-ready UX rule',
@@ -367,7 +367,7 @@ describe('composeSystemPrompt — slim payload gates (metadata facts / memory / 
     }
     // …and stay present in classic for the same inputs.
     const classic = composeSystemPrompt({ ...base, promptCoreVariant: undefined });
-    expect(classic).toContain('screen-file-first rule');
+    expect(classic).toContain('in-place artifact rule (CRITICAL)');
     expect(classic).toContain('product-realism rule');
   });
 
