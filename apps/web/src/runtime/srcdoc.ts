@@ -846,11 +846,8 @@ function injectSnapshotBridge(doc: string): string {
         '<foreignObject x="0" y="0" width="' + docW + '" height="' + docH + '">' +
         serializedHtml +
         '</foreignObject></svg>';
-      var blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-      var blobUrl = URL.createObjectURL(blob);
       var img = new Image();
       img.onload = function(){
-        URL.revokeObjectURL(blobUrl);
         try {
           var canvas = document.createElement('canvas');
           canvas.width = Math.max(1, Math.floor(capW * dpr));
@@ -873,10 +870,9 @@ function injectSnapshotBridge(doc: string): string {
         }
       };
       img.onerror = function(){
-        URL.revokeObjectURL(blobUrl);
         reject(new Error('snapshot image failed'));
       };
-      img.src = blobUrl;
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
     });
   }
   // Exposed so the export-capture bridge (same document) can reuse this renderer.

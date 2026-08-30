@@ -82,6 +82,28 @@ const API_MODE_AGENT_IDS = new Set([
   'aihubmix-api',
   'bedrock-api',
 ]);
+const PLAIN_OR_API_AGENT_IDS = new Set([
+  'antigravity',
+  'deepseek',
+  'qwen',
+  'atomcode',
+  'aider',
+  'grok-build',
+  'anthropic-api',
+  'openai-api',
+  'azure-openai-api',
+  'google-gemini-api',
+  'ollama-cloud-api',
+  'senseaudio-api',
+  'aihubmix-api',
+  'bedrock-api',
+  'byok-opencode',
+]);
+
+export function isStatelessPlainOrApiAgent(agentId?: string): boolean {
+  if (!agentId) return false;
+  return PLAIN_OR_API_AGENT_IDS.has(agentId) || API_MODE_AGENT_IDS.has(agentId);
+}
 
 export function latestUserPromptFromHistory(history: ChatMessage[]): string {
   for (let i = history.length - 1; i >= 0; i -= 1) {
@@ -91,10 +113,10 @@ export function latestUserPromptFromHistory(history: ChatMessage[]): string {
   return '';
 }
 
-function truncateForTranscript(content: string): string {
-  if (content.length <= MAX_TRANSCRIPT_MESSAGE_CHARS) return content;
-  const omitted = content.length - MAX_TRANSCRIPT_MESSAGE_CHARS;
-  return `${content.slice(0, MAX_TRANSCRIPT_MESSAGE_CHARS)}\n\n[OpenDesign truncated ${omitted} chars from this prior message before sending it to the agent. Full content remains in persisted history.]`;
+function truncateForTranscript(content: string, maxChars = MAX_TRANSCRIPT_MESSAGE_CHARS): string {
+  if (content.length <= maxChars) return content;
+  const omitted = content.length - maxChars;
+  return `${content.slice(0, maxChars)}\n\n[OpenDesign truncated ${omitted} chars from this prior message before sending it to the agent. Full content remains in persisted history.]`;
 }
 
 function escapeTranscriptRoleDelimiters(content: string): string {
@@ -197,6 +219,7 @@ function isSameTranscriptAgentFamily(agentId: string, targetAgentId: string): bo
 export function sanitizePriorAssistantTurnForTranscript(
   content: string,
   persistedArtifactFiles: ReadonlyArray<PersistedArtifactFileRef> = [],
+  options?: { preserveArtifacts?: boolean },
 ): string {
   let sanitized = content.replace(
     // `\1` backreference keeps the open/close tag names matched so we never
@@ -217,19 +240,12 @@ export function sanitizePriorAssistantTurnForTranscript(
       return match;
     },
   );
-  // Replace prior-turn `<artifact>` HTML with a one-line summary — but ONLY
-  // for artifacts whose save to the project files is confirmed by the
-  // message's producedFiles record. persistArtifact has refusal and
-  // write-failure branches; on those paths the transcript copy is the only
-  // surviving artifact body, so an unconfirmed block stays verbatim (the
-  // 12K truncation below still bounds it) and a follow-up turn can repair it.
-  // For confirmed saves the agent reads/edits the file from disk, never from
-  // this transcript copy, so re-sending the whole document each turn is pure
-  // waste — the summary keeps identifier/title/type plus the saved file name.
-  // Runs before truncateForTranscript so the summarized message no longer
-  // trips the 12K cap. Uses markdown-aware detection so a literal
-  // `<artifact>` recited in a code fence survives.
-  sanitized = summarizeArtifactsForTranscript(sanitized, persistedArtifactFiles);
+  // For tool-calling agents with disk access, summarize prior-turn `<artifact>` HTML
+  // to avoid re-sending large documents. For plain-stream and API agents (no disk read tools),
+  // preserve the artifact body so the model has the complete existing code to revise in-place.
+  if (!options?.preserveArtifacts) {
+    sanitized = summarizeArtifactsForTranscript(sanitized, persistedArtifactFiles);
+  }
   return sanitized;
 }
 
@@ -257,14 +273,20 @@ function persistedArtifactFilesOf(message: ChatMessage): PersistedArtifactFileRe
 
 export function buildDaemonTranscript(history: ChatMessage[], targetAgentId?: string): string {
   const scopedHistory = scopeHistoryToAgent(history, targetAgentId);
+  const isPlainOrApi = isStatelessPlainOrApiAgent(targetAgentId);
   const transcript = scopedHistory
     .map((m) => {
       const trimmed = m.content.trim();
       const sanitized =
         m.role === 'assistant'
-          ? sanitizePriorAssistantTurnForTranscript(trimmed, persistedArtifactFilesOf(m))
+          ? sanitizePriorAssistantTurnForTranscript(
+              trimmed,
+              persistedArtifactFilesOf(m),
+              { preserveArtifacts: isPlainOrApi },
+            )
           : trimmed;
-      return `## ${m.role}\n${escapeTranscriptRoleDelimiters(truncateForTranscript(sanitized))}`;
+      const maxChars = isPlainOrApi && m.role === 'assistant' ? 100_000 : MAX_TRANSCRIPT_MESSAGE_CHARS;
+      return `## ${m.role}\n${escapeTranscriptRoleDelimiters(truncateForTranscript(sanitized, maxChars))}`;
     })
     .join('\n\n');
   const warning = buildPriorRunContextWarning(scopedHistory);

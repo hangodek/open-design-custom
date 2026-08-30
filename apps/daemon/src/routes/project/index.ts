@@ -1407,11 +1407,8 @@ const URL_PREVIEW_SNAPSHOT_BRIDGE = `<script data-od-url-snapshot-bridge>
     }
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">' +
       '<foreignObject x="0" y="0" width="' + docW + '" height="' + docH + '">' + serializedHtml + '</foreignObject></svg>';
-    var blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-    var blobUrl = URL.createObjectURL(blob);
     var img = new Image();
     img.onload = function(){
-      URL.revokeObjectURL(blobUrl);
       try {
         var canvas = document.createElement('canvas');
         canvas.width = Math.max(1, Math.floor(w * dpr));
@@ -1432,10 +1429,9 @@ const URL_PREVIEW_SNAPSHOT_BRIDGE = `<script data-od-url-snapshot-bridge>
       }
     };
     img.onerror = function(){
-      URL.revokeObjectURL(blobUrl);
       window.parent.postMessage({ type: 'od:snapshot:result', id: id, error: 'snapshot image failed' }, '*');
     };
-    img.src = blobUrl;
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   }
   window.addEventListener('message', function(ev){
     var data = ev && ev.data;
