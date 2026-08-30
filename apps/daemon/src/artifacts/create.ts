@@ -15,12 +15,13 @@ export interface CreateProjectArtifactOptions {
   projectId: string;
   input: CreateProjectArtifactInput;
   metadata?: unknown;
+  overwrite?: boolean;
   writeProjectFile: (
     projectsRoot: string,
     projectId: string,
     name: string,
     body: Buffer,
-    options: { overwrite: false; artifactManifest: unknown },
+    options: { overwrite?: boolean; artifactManifest: unknown },
     metadata?: unknown,
   ) => Promise<unknown>;
 }
@@ -77,7 +78,7 @@ export async function createProjectArtifactFile(options: CreateProjectArtifactOp
     input.name,
     body,
     {
-      overwrite: false,
+      overwrite: options.overwrite ?? true,
       artifactManifest: resolveCreateArtifactManifest(input),
     },
     options.metadata,

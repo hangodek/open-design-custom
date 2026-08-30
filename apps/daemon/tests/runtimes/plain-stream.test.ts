@@ -76,7 +76,7 @@ describe('plain stream artifact extraction', () => {
     }
   });
 
-  it('infers html artifacts without a type and avoids filename collisions', async () => {
+  it('updates existing html artifacts in-place on revision', async () => {
     const projectsRoot = await mkdtemp(path.join(tmpdir(), 'od-plain-stream-'));
     try {
       await mkdir(path.join(projectsRoot, 'project-1'), { recursive: true });
@@ -95,13 +95,32 @@ describe('plain stream artifact extraction', () => {
 
       expect(written).toHaveLength(1);
       expect(written[0]).toMatchObject({
-        name: 'landing-2.html',
+        name: 'landing.html',
         artifactType: 'text/html',
       });
       await expect(readFile(path.join(projectsRoot, 'project-1', 'landing.html'), 'utf8'))
-        .resolves.toBe('existing');
-      await expect(readFile(path.join(projectsRoot, 'project-1', 'landing-2.html'), 'utf8'))
         .resolves.toContain('<body>New</body>');
+    } finally {
+      await rm(projectsRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('disambiguates duplicate artifact names generated within the same run', async () => {
+    const projectsRoot = await mkdtemp(path.join(tmpdir(), 'od-plain-stream-'));
+    try {
+      const written = await persistPlainStreamArtifacts({
+        projectsRoot,
+        projectId: 'project-1',
+        stdout: [
+          '<artifact identifier="card" type="text/html"><h1>Card 1</h1></artifact>',
+          '<artifact identifier="card" type="text/html"><h1>Card 2</h1></artifact>',
+        ].join('\n'),
+        writeProjectFile: writeProjectFile as any,
+      });
+
+      expect(written).toHaveLength(2);
+      expect(written[0]?.name).toBe('card.html');
+      expect(written[1]?.name).toBe('card-2.html');
     } finally {
       await rm(projectsRoot, { recursive: true, force: true });
     }

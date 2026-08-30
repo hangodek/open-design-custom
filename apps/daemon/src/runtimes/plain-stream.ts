@@ -158,11 +158,33 @@ export async function persistPlainStreamArtifactList(options: {
   const existingFiles = await listFiles(options.projectsRoot, options.projectId, {
     metadata: options.metadata,
   });
-  const reservedNames = new Set(existingFiles.map((file) => file.name));
+  const existingHtmlFiles = existingFiles.filter((file) => file.name.endsWith('.html'));
+  const configuredEntry =
+    typeof (options.metadata as Record<string, unknown> | undefined)?.entryFile === 'string'
+      ? ((options.metadata as Record<string, unknown>).entryFile as string)
+      : null;
+
+  const usedNamesInRun = new Set<string>();
   const persisted: PersistedPlainStreamArtifact[] = [];
 
   for (const artifact of artifacts) {
-    const name = reserveUniqueArtifactFileName(artifact.fileName, reservedNames);
+    let name = artifact.fileName;
+
+    // In-place revision preservation:
+    // If there is exactly one HTML artifact emitted in this run and the project already has a canonical
+    // HTML entry file (or a single existing HTML file), update that file in-place across revisions.
+    if (
+      artifacts.length === 1 &&
+      artifact.extension === '.html' &&
+      (configuredEntry || existingHtmlFiles.length === 1)
+    ) {
+      name = configuredEntry || existingHtmlFiles[0]?.name || artifact.fileName;
+    } else if (usedNamesInRun.has(name)) {
+      // Intra-run collision only:
+      name = reserveUniqueArtifactFileName(name, usedNamesInRun);
+    }
+
+    usedNamesInRun.add(name);
     const manifest = artifactManifestFor(artifact, name);
     const file = await createProjectArtifactFile({
       projectsRoot: options.projectsRoot,
@@ -173,6 +195,7 @@ export async function persistPlainStreamArtifactList(options: {
         artifactManifest: manifest,
       },
       metadata: options.metadata,
+      overwrite: true,
       writeProjectFile,
     });
     persisted.push({
