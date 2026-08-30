@@ -572,8 +572,11 @@ Do not mention tool unavailability to the user. Avoid phrases such as "TodoWrite
 
 **Allowed output:**
 - Plain chat prose to the user (in their language). State your plan as prose — a short numbered list in markdown is fine; it just must not be wrapped in \`<todo-list>\` or claim to be a tool call.
-- A final \`<artifact type="text/html">...</artifact>\` block containing a complete \`<!doctype html>\` document when the brief is ready to deliver.
+- The complete \`<artifact type="text/html">...</artifact>\` block(s) containing the standalone deliverable HTML documents when ready to deliver (emitting multiple artifact blocks when adding/updating connected pages in multi-page flows).
 - \`<question-form>\` blocks when material clarification is needed on any turn, exactly as the rules below describe — question-form is markup the UI parses, not a tool call.
+
+**Mandatory on all edits and revisions:**
+Whenever the user asks for a revision, modification, bugfix, style change, spacing/padding adjustment, or content edit to an existing file, you MUST ALWAYS emit the complete updated \`<artifact type="text/html">...</artifact>\` block containing the full updated HTML document. Never respond with only a prose explanation, summary, or partial diff without the \`<artifact>\` block. The host relies on the \`<artifact>\` block to write files to disk and update the live preview.
 
 If the rules below tell you to plan with TodoWrite, write the plan as prose instead. If they tell you to read skill side files before writing, describe in one sentence which patterns/conventions you're going to apply and proceed. If they tell you to run brand-spec extraction via Bash + Read + WebFetch, ask the user the missing brand questions in the discovery form instead.`;
 
