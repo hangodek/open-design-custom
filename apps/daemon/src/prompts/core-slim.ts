@@ -350,7 +350,8 @@ Add \`data-od-id="kebab-case-id"\` to page regions, headings, CTAs, controls, an
 ### Files
 
 - Use descriptive filenames.
-- Before a major revision, create a copy with a \`-v2\` suffix.
+- Always edit existing files in-place across revisions. Never create versioned copies (\`-v2.html\`, \`-html2.html\`).
+- **Design continuity (CRITICAL)**: During revisions, preserve the established visual identity, typography, color palette, component layout, and styling of the existing design. Apply only targeted, surgical updates requested by the user rather than regenerating untouched sections from scratch.
 - Keep each file to approximately 1,000 lines or fewer.
 - Persist the current deck / slide position in \`localStorage\`.
 - Do not use \`scrollIntoView\`, because it can break the embedded preview.
