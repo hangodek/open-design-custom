@@ -19,27 +19,30 @@ This repository is an independent, community-maintained edition of OpenDesign fo
 
 ### Key Enhancements & Changes
 
+- **Plug-and-Play Local Architecture**: Fully self-contained local deployment with embedded SQLite database, automated build lifecycle, and local artifact storage (`.od/projects/`). Zero mandatory cloud infrastructure, external databases, or Docker setup required.
+- **Interactive Multi-Page Prototyping & Real-Time Tab Highlighting**: High-speed intra-project preview link navigation. Clicking relative links (e.g. `<a href="register.html">` from `login.html`) inside the preview iframe intercepts the navigation, dynamically switches the active workspace tab, and highlights the active file in the top navbar.
+- **Intelligent Bidirectional Cross-Linking**: When generating or expanding multi-page projects, the agent automatically links relative anchors across files and patches existing placeholder links (`href="#"`) for seamless bidirectional navigation.
+- **Clean Multi-Artifact Delivery**: Extended API and BYOK streaming with clean multi-artifact extraction and prose stripping, enabling multiple connected pages to be generated in a single turn without chat code leakage.
+- **In-Place File Iteration & Restored Rollbacks**: Eliminated file fragmentation (`1.html`, `2.html`, `landing-v2.html`). The model iterates on existing files in-place so OpenDesign's built-in file history and rollback system remain intact.
+- **High-Capacity Stdin Prompt Streaming (Anti-E2BIG)**: Native agent adapters stream prompts via stdin pipes (`--input-format text`), resolving kernel argument limit crashes (`spawn E2BIG`) during long sessions with heavy design tokens.
 - **Streamlined Developer Lifecycle**: Replaced verbose CLI calls with ergonomic root scripts: `pnpm dev` (starts daemon and web runtime), `pnpm status`, `pnpm restart`, and `pnpm stop`.
-- **In-Place File Iteration & Restored Rollbacks**: Resolved issues where generation created fragmented numbered files (`1.html`, `2.html`, `landing-v2.html`). The model iteratively updates existing design artifacts in-place, ensuring that OpenDesign's built-in file history and rollback capabilities remain fully functional.
-- **Interactive Multi-Page Prototyping & Tab Switching**: Added intra-project link navigation inside the preview iframe. Clicking relative links (e.g. `<a href="login.html">` or `<a href="register.html">`) instantly switches the active file tab in the IDE.
-- **Intelligent Workspace Cross-Linking**: When adding new pages to a project (e.g. creating `register.html` alongside `login.html`), OpenDesign maintains design token consistency, connects relative links, and updates existing files' placeholder links (`href="#"`) in the same turn for full bidirectional navigation.
-- **Clean Multi-Artifact Delivery**: Extended plain API / BYOK streaming with full multi-artifact delivery and clean prose stripping, enabling multiple connected pages to be generated or updated in a single turn without code leaking into chat bubbles.
-- **High-Capacity Stdin Prompt Streaming (Anti-E2BIG)**: Migrated Antigravity (`agy`) and local agent adapters to stream full prompts through standard input pipes (`--input-format text`) instead of CLI arguments, eliminating OS `ARG_MAX` kernel limit crashes (`spawn E2BIG`) on long multi-turn sessions with large design systems.
-- **Native Local Runtime Support**: Direct, containerless execution support across Linux, macOS, and WSL without mandatory Docker encapsulation.
-- **Strict Custom Instruction Priority**: User-level and project-level instructions maintain definitive priority over system prompts and downstream presets.
-- **Unrestricted Local & BYOK Execution**: Full compatibility with 26+ local agent CLIs (DeepSeek, Claude Code, Codex, OpenCode, Cursor, Kimi, Hermes, Antigravity, etc.) and direct Bring-Your-Own-Key (BYOK) providers.
+- **Native Local Runtime & Broad Agent Compatibility**: Direct support across Linux, macOS, and WSL with 26+ coding agent CLIs (Claude Code, Codex, OpenCode, DeepSeek, Antigravity, Cursor, Hermes, Kimi, etc.) and direct BYOK API providers.
 
-### Quick Commands
+### Quickstart
 
 ```bash
-# Start Daemon + Web UI
+# Clone and enter directory
+git clone git@github.com:hangodek/open-design-custom.git
+cd open-design-custom
+
+# Install dependencies
+pnpm install
+
+# Start Daemon + Web UI (opens at http://127.0.0.1:5175)
 pnpm dev
 
 # Check Runtime Status
 pnpm status
-
-# Direct CLI Access
-pnpm od --help
 
 # Stop Background Processes
 pnpm stop
