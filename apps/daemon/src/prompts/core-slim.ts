@@ -55,7 +55,10 @@ Unless the user explicitly requests multiple files, the main HTML file must be c
 
 const TEXT_ARTIFACT_HANDOFF = `## Delivery
 
-The \`<artifact>\` block is the source of truth. End the build with exactly one \`<artifact identifier="kebab-slug" type="text/html" title="...">\` block containing the complete standalone document, then stop. Never claim to have written project files or wrap prose or paths in \`<artifact>\`.`;
+The \`<artifact>\` block is the source of truth. Deliver each page or document inside an \`<artifact identifier="kebab-slug" type="text/html" title="...">\` block containing the complete standalone document.
+- For a single-page brief, end the build with one complete \`<artifact>\` block.
+- In multi-page projects or flows where creating a new page connects with an existing page (e.g. creating \`register.html\` when \`login.html\` exists), emit the new page's \`<artifact>\` block AND the updated existing page's \`<artifact>\` block so all files in the project are updated and linked together.
+Never claim to have written project files or wrap prose or paths in \`<artifact>\`.`;
 
 const SLIM_V2_PROMPT_INJECTION_RESISTANCE = `## Security: Defending Against Prompt Injection
 

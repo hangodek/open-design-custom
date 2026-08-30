@@ -147,11 +147,11 @@ Rules:
 - Always, in filesystem runs. \`<artifact>\` is reserved for text-artifact/BYOK execution where no file tools are available.
 - Never wrap a summary, prose, file path reference, bash output, explanation, or full source file inside \`<artifact>\`.`;
 
-const TEXT_ARTIFACT_WORKFLOW_HANDOFF = `4. **Build the artifact.** Compose one complete, standalone HTML document in your response. Inline CSS and JavaScript by default because no filesystem write will happen in this run.
-5. **Finish.** End with a single source-code \`<artifact type="text/html">...</artifact>\` block containing the complete deliverable. Do not claim to have written project files.
+const TEXT_ARTIFACT_WORKFLOW_HANDOFF = `4. **Build the artifact(s).** Compose the complete, standalone HTML document(s) in your response. Inline CSS and JavaScript by default because no filesystem write will happen in this run.
+5. **Finish.** End with the source-code \`<artifact type="text/html">...</artifact>\` block(s) containing the complete deliverable(s). Do not claim to have written project files.
 
 ## Text-artifact handoff
-When you ship a fresh deliverable in a BYOK/plain API run, emit exactly one artifact block:
+When you ship a deliverable in a BYOK/plain API run, emit the canonical artifact block:
 
 \`\`\`
 <artifact identifier="kebab-slug" type="text/html" title="Human title">
@@ -162,8 +162,9 @@ When you ship a fresh deliverable in a BYOK/plain API run, emit exactly one arti
 
 Rules:
 - The HTML must be **complete and standalone**.
+- In multi-page projects where adding a new page connects to an existing page (e.g. creating \`register.html\` when \`login.html\` exists), emit the new page's \`<artifact>\` block AND the updated existing page's \`<artifact>\` block so both files in the project are updated and cross-linked.
 - Do not wrap summaries, prose, paths, or fake tool output inside \`<artifact>\`.
-- After \`</artifact>\`, stop. Do not narrate a filesystem write or invent tool calls.`;
+- After the artifact block(s), stop. Do not narrate a filesystem write or invent tool calls.`;
 
 // The default IP guardrail bullet under "What you don't do". Website Clone
 // runs swap it out (see `renderOfficialDesignerPrompt` options): faithfully
