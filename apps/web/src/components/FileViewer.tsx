@@ -10125,14 +10125,17 @@ function HtmlViewer({
   }, [routingHtmlSource, serverPoweredPreviewRequired]);
   const previewBridgeQuery = useMemo(() => {
     const query = [BASE_PREVIEW_BRIDGE_QUERY];
-    // Preserve the old URL-load behavior for ordinary passive documents. Only
-    // request a guard when the source heuristic says this artifact needs it;
-    // this avoids suppressing authored focus/navigation in unrelated pages.
-    if (needsSandboxShim && !needsPowered) query.push('odPreviewBridge=sandbox');
+    // Always include the sandbox bridge for URL-load HTML previews so that
+    // relative HTML link clicks dispatch od:preview-open-file to the host
+    // workspace rather than navigating the iframe directly. The shim is safe
+    // to inject even when the document doesn't use localStorage or external
+    // scripts (those shims are no-ops); withholding it for "simple" documents
+    // silently broke cross-page navigation tab highlighting.
+    if (!needsPowered) query.push('odPreviewBridge=sandbox');
     if (needsFocusGuard && !needsPowered) query.push('odPreviewBridge=focus');
     if (needsRedirectGuard && !needsPowered) query.push('odPreviewBridge=redirect');
     return query.join('&');
-  }, [needsFocusGuard, needsPowered, needsRedirectGuard, needsSandboxShim]);
+  }, [needsFocusGuard, needsPowered, needsRedirectGuard]);
   const [urlSelectionBridgeReady, setUrlSelectionBridgeReady] = useState(false);
   const urlLoadDecision: UrlLoadDecision = {
     mode,

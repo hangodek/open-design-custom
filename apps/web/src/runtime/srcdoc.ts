@@ -1636,24 +1636,69 @@ function injectSandboxShim(doc: string): string {
       } catch (_) {}
       safe && window.open(href, '_blank', 'noopener,noreferrer');
     } else {
-      var cleanHref = (href || '')
-        .split('?')[0]
-        .split('#')[0]
-        .replace(/^\.\//, '')
-        .replace(/^\//, '');
-      if (
-        /\.html?$/i.test(cleanHref) &&
-        !cleanHref.startsWith('http://') &&
-        !cleanHref.startsWith('https://') &&
-        !cleanHref.startsWith('//') &&
-        !cleanHref.startsWith('mailto:') &&
-        !cleanHref.startsWith('tel:') &&
-        !cleanHref.startsWith('javascript:')
-      ) {
+      var fileName = null;
+      try {
+        var baseUrl = new URL(document.baseURI || location.href);
+        var nextUrl = new URL(href, baseUrl);
+        if (nextUrl.origin === baseUrl.origin) {
+          var projectMarker = '/api/projects/';
+          var projectIndex = baseUrl.pathname.indexOf(projectMarker);
+          if (projectIndex >= 0) {
+            var projectIdStart = projectIndex + projectMarker.length;
+            var routeMarkerStart = baseUrl.pathname.indexOf('/', projectIdStart);
+            if (routeMarkerStart > projectIdStart) {
+              var rawMarker = '/raw/';
+              var fileRoot = null;
+              if (baseUrl.pathname.slice(routeMarkerStart, routeMarkerStart + rawMarker.length) === rawMarker) {
+                fileRoot = baseUrl.pathname.slice(0, routeMarkerStart + rawMarker.length);
+              } else {
+                var previewMarker = '/preview/';
+                if (baseUrl.pathname.slice(routeMarkerStart, routeMarkerStart + previewMarker.length) === previewMarker) {
+                  var scopeStart = routeMarkerStart + previewMarker.length;
+                  var scopeEnd = baseUrl.pathname.indexOf('/', scopeStart);
+                  if (scopeEnd > scopeStart) {
+                    fileRoot = baseUrl.pathname.slice(0, scopeEnd + 1);
+                  }
+                }
+              }
+              if (fileRoot && nextUrl.pathname.indexOf(fileRoot) === 0) {
+                var candidate = decodeURIComponent(nextUrl.pathname.slice(fileRoot.length));
+                if (
+                  candidate &&
+                  candidate.charAt(0) !== '/' &&
+                  !candidate.split('/').some(function(p){ return !p || p === '.' || p === '..'; }) &&
+                  /\.html?$/i.test(candidate)
+                ) {
+                  fileName = candidate;
+                }
+              }
+            }
+          }
+        }
+      } catch (_) {}
+      if (!fileName) {
+        var cleanHref = (href || '')
+          .split('?')[0]
+          .split('#')[0]
+          .replace(/^\.\//, '')
+          .replace(/^\//, '');
+        if (
+          /\.html?$/i.test(cleanHref) &&
+          !cleanHref.startsWith('http://') &&
+          !cleanHref.startsWith('https://') &&
+          !cleanHref.startsWith('//') &&
+          !cleanHref.startsWith('mailto:') &&
+          !cleanHref.startsWith('tel:') &&
+          !cleanHref.startsWith('javascript:')
+        ) {
+          fileName = cleanHref;
+        }
+      }
+      if (fileName) {
         e.preventDefault();
         window.parent.postMessage({
           type: 'od:preview-open-file',
-          fileName: cleanHref,
+          fileName: fileName,
         }, '*');
       }
     }
