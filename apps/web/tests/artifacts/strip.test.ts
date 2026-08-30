@@ -17,6 +17,13 @@ describe('stripArtifact', () => {
     expect(out).toBe('Header.\n\nFooter.');
   });
 
+  it('removes multiple real artifact tags and their bodies from prose', () => {
+    const out = stripArtifact(
+      'Header.\n<artifact identifier="register" type="text/html" title="Register">\n<h1>register</h1>\n</artifact>\nMiddle.\n<artifact identifier="login" type="text/html" title="Login">\n<h1>login</h1>\n</artifact>\nFooter.',
+    );
+    expect(out).toBe('Header.\n\nMiddle.\n\nFooter.');
+  });
+
   it('preserves an artifact tag wrapped in inline backticks', () => {
     const input = 'Wrap output as `<artifact identifier="x">demo</artifact>` to ship it.';
     expect(stripArtifact(input)).toBe(input);
