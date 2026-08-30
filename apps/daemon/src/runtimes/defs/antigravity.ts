@@ -215,29 +215,18 @@ export const antigravityAgentDef = {
         runtimeContext.antigravitySettingsPath,
       );
     }
-    // Print mode via `-p <prompt>`. Older OD used `agy -p -` and wrote the
-    // prompt on stdin, but current agy (reproduced on 1.1.13) treats `-`
-    // as the literal prompt string and ignores stdin — the model only
-    // ever sees a single dash (#7161). Passing the real prompt as the
-    // `-p` argument matches the verified working CLI form
-    // (`agy -p "say hello"`).
+    // Prompt delivery via stdin using `--input-format text` with
+    // `promptViaStdin: true`. Passing the full prompt on argv (`-p <prompt>`)
+    // crashes with `spawn E2BIG` (Argument list too long) whenever multi-turn
+    // transcripts or large design system tokens exceed OS kernel ARG_MAX limits.
     const args: string[] = [];
-    // Always opt into `--log-file` when the daemon supplied a path so
-    // it can post-exit grep for the actual upstream failure shape
-    // (auth missing vs quota reached vs upstream error) — without it
-    // the chat surfaces a generic "empty response" because print mode
-    // never echoes those errors on stdout. See server.ts empty-output
-    // guard for the consumer.
-    //
-    // Flag order is load-bearing on agy: put `--log-file` before `-p`
-    // so diagnostics (model override / auth / quota) land in the log.
     if (runtimeContext.agentLogFilePath) {
       args.push('--log-file', runtimeContext.agentLogFilePath);
     }
-    args.push('-p', prompt);
+    args.push('--input-format', 'text');
     return args;
   },
-  promptViaStdin: false,
+  promptViaStdin: true,
   streamFormat: 'plain',
   installUrl: 'https://antigravity.google/cli',
   docsUrl: 'https://antigravity.google/docs/cli-overview',

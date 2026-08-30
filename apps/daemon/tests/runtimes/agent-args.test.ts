@@ -653,13 +653,13 @@ test('qwen args check promptViaStdin, base args, model args and exclude `-` sent
 // update` (no `chat`). Current agy treats `agy -p -` as a literal
 // prompt of "-" (stdin is ignored) — see #7161. OD therefore passes
 // the real prompt as the `-p` argument.
-test('antigravity passes prompt via -p argument (print mode)', () => {
+test('antigravity passes prompt via stdin with --input-format text', () => {
   assert.equal(antigravity.bin, 'agy');
   assert.equal(antigravity.streamFormat, 'plain');
-  assert.equal(antigravity.promptViaStdin, false);
+  assert.equal(antigravity.promptViaStdin, true);
 
   const args = antigravity.buildArgs('write hello world', [], [], {}, {});
-  assert.deepEqual(args, ['-p', 'write hello world']);
+  assert.deepEqual(args, ['--input-format', 'text']);
 
   const argsWithLog = antigravity.buildArgs('write hello world', [], [], {}, {
     agentLogFilePath: '/tmp/od-agy-test.log',
@@ -667,8 +667,8 @@ test('antigravity passes prompt via -p argument (print mode)', () => {
   assert.deepEqual(argsWithLog, [
     '--log-file',
     '/tmp/od-agy-test.log',
-    '-p',
-    'write hello world',
+    '--input-format',
+    'text',
   ]);
 
   // No `--model` flag exists upstream, so buildArgs argv must stay the
@@ -687,31 +687,24 @@ test('antigravity passes prompt via -p argument (print mode)', () => {
     assert.deepEqual(withModel, [
       '--log-file',
       '/tmp/od-agy-test.log',
-      '-p',
-      'hi',
+      '--input-format',
+      'text',
     ]);
   } finally {
     rmSync(settingsDir, { recursive: true, force: true });
   }
 
-  // Argv must NOT carry `-c` even on follow-up turns. We tested resume
-  // mode and found agy's `-c` activates an internal agentic loop (tool
-  // calls, retries, fallback-to-cached-response) that overrides OD's
-  // system-prompt OVERRIDE — producing byte-identical form re-emissions
-  // on turn 2. The stateless path + sanitized transcript injection is
-  // what actually breaks the discovery loop. Pin both shapes so a
-  // future contributor doesn't silently reintroduce `-c` and hit the
-  // same regression.
+  // Argv must NOT carry `-c` even on follow-up turns.
   const followUp = antigravity.buildArgs('next message', [], [], {}, {
     hasPriorAssistantTurn: true,
   });
-  assert.deepEqual(followUp, ['-p', 'next message']);
+  assert.deepEqual(followUp, ['--input-format', 'text']);
   assert.equal(followUp.includes('-c'), false);
 
   const firstTurn = antigravity.buildArgs('first', [], [], {}, {
     hasPriorAssistantTurn: false,
   });
-  assert.deepEqual(firstTurn, ['-p', 'first']);
+  assert.deepEqual(firstTurn, ['--input-format', 'text']);
   assert.equal(antigravity.resumesSessionViaCli, undefined);
 
   assert.equal(antigravity.maxPromptArgBytes, undefined);
