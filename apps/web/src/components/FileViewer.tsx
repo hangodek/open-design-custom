@@ -8463,7 +8463,13 @@ function HtmlViewer({
   // the infinite-loop story (issue #2361).
   const srcDocFrameDedupeResetForRef = useRef<HTMLIFrameElement | null>(null);
   const isActivePreviewIframeSource = useCallback((source: MessageEventSource | null) => {
-    return workspaceActive && !!source && source === iframeRef.current?.contentWindow;
+    return (
+      workspaceActive &&
+      !!source &&
+      (source === iframeRef.current?.contentWindow ||
+        source === urlPreviewIframeRef.current?.contentWindow ||
+        source === srcDocPreviewIframeRef.current?.contentWindow)
+    );
   }, [workspaceActive]);
   const isOurPreviewIframeSource = useCallback((source: MessageEventSource | null) => {
     if (!workspaceActive || !source) return false;

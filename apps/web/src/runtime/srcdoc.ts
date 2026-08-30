@@ -1636,7 +1636,11 @@ function injectSandboxShim(doc: string): string {
       } catch (_) {}
       safe && window.open(href, '_blank', 'noopener,noreferrer');
     } else {
-      var cleanHref = (href || '').split('?')[0].split('#')[0].replace(/^\.\//, '');
+      var cleanHref = (href || '')
+        .split('?')[0]
+        .split('#')[0]
+        .replace(/^\.\//, '')
+        .replace(/^\//, '');
       if (
         /\.html?$/i.test(cleanHref) &&
         !cleanHref.startsWith('http://') &&
