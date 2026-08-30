@@ -3341,6 +3341,7 @@ export function FileWorkspace({
     }),
     [slideNavRequest, activeViewerFile?.name, slideNavDeliverableNonce],
   );
+  const stableOpenFile = useStableHandler((name: string) => openFile(name));
   const stableOpenFileReplacing = useStableHandler(openFileReplacing);
   const renderFileViewer = (file: ProjectFile, workspaceActive: boolean) => (
     <FileViewer
@@ -3361,6 +3362,7 @@ export function FileWorkspace({
         file.name === 'brand.html' ? onBrandExtractionStopRequest : undefined
       }
       onFileSaved={refreshFilesWithoutResult}
+      onOpenFile={stableOpenFile}
       onOpenFileReplacing={stableOpenFileReplacing}
       commentPortalId={workspaceActive ? commentPortalId : undefined}
       onCommentModeChange={workspaceActive ? onCommentModeChange : undefined}

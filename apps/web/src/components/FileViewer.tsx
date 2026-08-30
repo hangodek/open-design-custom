@@ -1813,6 +1813,7 @@ interface Props {
   onSendBoardCommentAttachments?: (attachments: ChatCommentAttachment[], images?: File[]) => Promise<CommentSendResult> | CommentSendResult;
   onFileSaved?: () => Promise<void> | void;
   onBrandExtractionStopRequest?: () => void;
+  onOpenFile?: (openName: string) => void;
   // Open `openName` as a tab (focusing it) and close `closeName` in one
   // atomic tab-state update. The React module pointer uses this to jump to the
   // HTML entry that renders a module and drop the dead-end module tab.
@@ -1908,6 +1909,7 @@ export const FileViewer = memo(function FileViewer({
   onSendBoardCommentAttachments,
   onFileSaved,
   onBrandExtractionStopRequest,
+  onOpenFile,
   onOpenFileReplacing,
   commentPortalId,
   onCommentModeChange,
@@ -1997,6 +1999,7 @@ export const FileViewer = memo(function FileViewer({
         onSendBoardCommentAttachments={onSendBoardCommentAttachments}
         onFileSaved={onFileSaved}
         onBrandExtractionStopRequest={onBrandExtractionStopRequest}
+        onOpenFile={onOpenFile}
         onOpenFileReplacing={onOpenFileReplacing}
         commentPortalId={commentPortalId}
         onCommentModeChange={onCommentModeChange}
@@ -7389,6 +7392,7 @@ function HtmlViewer({
   onSendBoardCommentAttachments,
   onFileSaved,
   onBrandExtractionStopRequest,
+  onOpenFile,
   onOpenFileReplacing,
   commentPortalId,
   onCommentModeChange,
@@ -7424,6 +7428,7 @@ function HtmlViewer({
   onSendBoardCommentAttachments?: (attachments: ChatCommentAttachment[], images?: File[]) => Promise<CommentSendResult> | CommentSendResult;
   onFileSaved?: () => Promise<void> | void;
   onBrandExtractionStopRequest?: () => void;
+  onOpenFile?: (openName: string) => void;
   onOpenFileReplacing?: (openName: string, closeName: string) => void;
   commentPortalId?: string;
   onCommentModeChange?: (active: boolean) => void;
@@ -11915,11 +11920,15 @@ function HtmlViewer({
       ) {
         return;
       }
-      onOpenFileReplacing?.(data.fileName, file.name);
+      if (onOpenFile) {
+        onOpenFile(data.fileName);
+      } else {
+        onOpenFileReplacing?.(data.fileName, file.name);
+      }
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [file.name, isActivePreviewIframeSource, onOpenFileReplacing, workspaceActive]);
+  }, [file.name, isActivePreviewIframeSource, onOpenFile, onOpenFileReplacing, workspaceActive]);
 
   useEffect(() => {
     if (!workspaceActive) return;
