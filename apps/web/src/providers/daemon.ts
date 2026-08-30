@@ -63,6 +63,7 @@ function detectClientType(): 'desktop' | 'web' | 'unknown' {
 import { parseSseFrame } from './sse';
 import {
   extractRawArtifactBlocks,
+  stripSupersededArtifacts,
   summarizeArtifactsForTranscript,
   type PersistedArtifactFileRef,
 } from '../artifacts/strip';
@@ -281,21 +282,32 @@ function persistedArtifactFilesOf(message: ChatMessage): PersistedArtifactFileRe
 export function buildDaemonTranscript(history: ChatMessage[], targetAgentId?: string): string {
   const scopedHistory = scopeHistoryToAgent(history, targetAgentId);
   const isPlainOrApi = isStatelessPlainOrApiAgent(targetAgentId);
-  const transcript = scopedHistory
-    .map((m) => {
-      const trimmed = m.content.trim();
-      const sanitized =
-        m.role === 'assistant'
-          ? sanitizePriorAssistantTurnForTranscript(
-              trimmed,
-              persistedArtifactFilesOf(m),
-              { preserveArtifacts: isPlainOrApi },
-            )
-          : trimmed;
-      const maxChars = isPlainOrApi && m.role === 'assistant' ? 100_000 : MAX_TRANSCRIPT_MESSAGE_CHARS;
-      return `## ${m.role}\n${escapeTranscriptRoleDelimiters(truncateForTranscript(sanitized, maxChars))}`;
-    })
-    .join('\n\n');
+  const seenArtifactKeys = new Set<string>();
+
+  // Process backwards so plain/stateless models only receive the full HTML for the LATEST
+  // version of each artifact, stripping older superseded HTML to keep context clean and consistent.
+  const processedTurns: string[] = new Array(scopedHistory.length);
+  for (let i = scopedHistory.length - 1; i >= 0; i -= 1) {
+    const m = scopedHistory[i];
+    const trimmed = m.content.trim();
+    let sanitized =
+      m.role === 'assistant'
+        ? sanitizePriorAssistantTurnForTranscript(
+            trimmed,
+            persistedArtifactFilesOf(m),
+            { preserveArtifacts: isPlainOrApi },
+          )
+        : trimmed;
+
+    if (isPlainOrApi && m.role === 'assistant') {
+      sanitized = stripSupersededArtifacts(sanitized, seenArtifactKeys);
+    }
+
+    const maxChars = isPlainOrApi && m.role === 'assistant' ? 100_000 : MAX_TRANSCRIPT_MESSAGE_CHARS;
+    processedTurns[i] = `## ${m.role}\n${escapeTranscriptRoleDelimiters(truncateForTranscript(sanitized, maxChars))}`;
+  }
+
+  const transcript = processedTurns.join('\n\n');
   const warning = buildPriorRunContextWarning(scopedHistory);
   return warning ? `${warning}\n\n${transcript}` : transcript;
 }

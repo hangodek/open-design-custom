@@ -97,6 +97,49 @@ export function extractRawArtifactBlocks(content: string): string[] {
   return blocks;
 }
 
+/**
+ * Replace older superseded versions of artifacts with a compact placeholder,
+ * ensuring only the latest version of each artifact retains its full code in multi-turn history.
+ */
+export function stripSupersededArtifacts(
+  content: string,
+  seenKeys: Set<string>,
+): string {
+  let result = '';
+  let cursor = 0;
+  while (cursor <= content.length) {
+    const tail = content.slice(cursor);
+    const { ranges: baseRanges, unclosedFenceStart } = computeSkipRanges(tail);
+    const ranges: Range[] =
+      unclosedFenceStart !== null ? [...baseRanges, [unclosedFenceStart, tail.length]] : baseRanges;
+    const open = findRealOpen(tail, 0, ranges);
+    if (open === -1) {
+      result += tail;
+      break;
+    }
+    const closeTag = tail.indexOf('>', open);
+    if (closeTag === -1) {
+      result += tail;
+      break;
+    }
+    const end = findUnskipped(tail, CLOSE, closeTag, ranges);
+    if (end === -1) {
+      result += tail;
+      break;
+    }
+    const attrs = parseArtifactAttrs(tail.slice(open, closeTag));
+    const key = (attrs['identifier'] || attrs['title'] || 'artifact').toLowerCase();
+    if (seenKeys.has(key)) {
+      result += tail.slice(0, open) + `[artifact "${key}" emitted on this prior turn is superseded by the newer version in a later turn.]`;
+    } else {
+      seenKeys.add(key);
+      result += tail.slice(0, end + CLOSE.length);
+    }
+    cursor += end + CLOSE.length;
+  }
+  return result;
+}
+
 function findSingleRecoverableHtmlFence(content: string): MarkdownFenceRange | null {
   HTML_FENCE_RE.lastIndex = 0;
   let recovered: MarkdownFenceRange | null = null;
