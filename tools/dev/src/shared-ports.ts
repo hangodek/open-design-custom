@@ -23,9 +23,15 @@ export async function ensureSharedPortsResolved(
   if (!targets.includes(APP_KEYS.WEB)) return;
   const daemonRequested = targets.includes(APP_KEYS.DAEMON);
   const reserved = new Set<number>();
-  const webPort = parsePortOption(options.webPort, "--web-port");
-  if (webPort != null) reserved.add(webPort);
-  let daemonPort = parsePortOption(options.daemonPort, "--daemon-port");
+  const webPort = parsePortOption(options.webPort ?? process.env.OD_WEB_PORT, "--web-port");
+  if (webPort != null) {
+    reserved.add(webPort);
+    options.webPort = String(webPort);
+  }
+  let daemonPort = parsePortOption(
+    options.daemonPort ?? process.env.OD_DAEMON_PORT ?? process.env.OD_PORT,
+    "--daemon-port",
+  );
   if (daemonRequested && daemonPort == null) {
     daemonPort = portFromUrl(runningDaemonUrl);
     if (daemonPort != null) {

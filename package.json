@@ -10,12 +10,12 @@
     "od": "./apps/daemon/bin/od.mjs"
   },
   "scripts": {
-    "dev": "pnpm exec tools-dev run web",
-    "dev:web": "pnpm exec tools-dev run web",
-    "dev:daemon": "pnpm exec tools-dev run daemon",
-    "dev:desktop": "pnpm exec tools-dev start desktop",
+    "dev": "pnpm exec tools-dev run web --web-port 5175 --daemon-port 7457",
+    "dev:web": "pnpm exec tools-dev run web --web-port 5175 --daemon-port 7457",
+    "dev:daemon": "pnpm exec tools-dev run daemon --daemon-port 7457",
+    "dev:desktop": "pnpm exec tools-dev start desktop --web-port 5175 --daemon-port 7457",
     "stop": "pnpm exec tools-dev stop",
-    "restart": "pnpm exec tools-dev restart web",
+    "restart": "pnpm exec tools-dev restart web --web-port 5175 --daemon-port 7457",
     "status": "pnpm exec tools-dev status",
     "od": "pnpm exec od",
     "postinstall": "node ./scripts/postinstall.mjs",
