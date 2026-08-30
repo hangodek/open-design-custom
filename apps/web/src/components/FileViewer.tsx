@@ -14927,7 +14927,7 @@ function HtmlViewer({
     // Returns real rendered pixels and is never tainted, unlike the in-iframe
     // SVG-foreignObject bridge. Used on pure web (no host) or if the render
     // above is unavailable. Works for both srcDoc and URL-load previews.
-    const visibleIframe = iframeRef.current ?? srcDocPreviewIframeRef.current;
+    const visibleIframe = iframeRef.current ?? srcDocPreviewIframeRef.current ?? urlPreviewIframeRef.current;
     const hostSnapshot = await captureHostIframeSnapshot(visibleIframe);
     if (hostSnapshot) return hostSnapshot;
 

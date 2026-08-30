@@ -1293,6 +1293,27 @@ const URL_PREVIEW_SNAPSHOT_BRIDGE = `<script data-od-url-snapshot-bridge>
         .replace(/@import[^;]+;/gi, '')
         .replace(/@font-face\\s*\\{[^}]*\\}/gi, '');
     }
+    var images = cloneRoot.querySelectorAll('img');
+    for (var im = 0; im < images.length; im++) {
+      try {
+        var src = images[im].getAttribute('src') || '';
+        if (src && !src.startsWith('data:')) {
+          var origImg = originalRoot.querySelector('img[src="' + CSS.escape(src) + '"]');
+          if (origImg && origImg.complete && origImg.naturalWidth > 0) {
+            var hCanvas = document.createElement('canvas');
+            hCanvas.width = origImg.naturalWidth;
+            hCanvas.height = origImg.naturalHeight;
+            var hCtx = hCanvas.getContext('2d');
+            if (hCtx) {
+              hCtx.drawImage(origImg, 0, 0);
+              images[im].setAttribute('src', hCanvas.toDataURL('image/png'));
+            }
+          }
+        }
+      } catch (_) {
+        images[im].removeAttribute('src');
+      }
+    }
   }
   function pruneHiddenSnapshotNodes(originalRoot, cloneRoot){
     var originals = originalRoot.querySelectorAll('*');
@@ -1368,15 +1389,29 @@ const URL_PREVIEW_SNAPSHOT_BRIDGE = `<script data-od-url-snapshot-bridge>
     var cloneBody = clone.querySelector('body');
     var rootStyle = clone.getAttribute('style') || '';
     var bodyStyle = cloneBody ? cloneBody.getAttribute('style') || '' : '';
-    var bodyContent = cloneBody ? cloneBody.innerHTML : clone.innerHTML;
     var wrapperStyle = rootStyle + bodyStyle +
       'margin:0;position:relative;left:' + (-scroll.x) + 'px;top:' + (-scroll.y) + 'px;' +
       'width:' + docW + 'px;height:' + docH + 'px;overflow:visible;';
-    var html = '<div xmlns="http://www.w3.org/1999/xhtml" style="' + escapeAttribute(wrapperStyle) + '">' + bodyContent + '</div>';
+    var wrapper = document.createElement('div');
+    wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+    wrapper.setAttribute('style', wrapperStyle);
+    var container = cloneBody || clone;
+    while (container.firstChild) {
+      wrapper.appendChild(container.firstChild);
+    }
+    var serializedHtml = '';
+    try {
+      serializedHtml = new XMLSerializer().serializeToString(wrapper);
+    } catch (_) {
+      serializedHtml = '<div xmlns="http://www.w3.org/1999/xhtml" style="' + escapeAttribute(wrapperStyle) + '">' + (container.innerHTML || '') + '</div>';
+    }
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">' +
-      '<foreignObject x="0" y="0" width="' + docW + '" height="' + docH + '">' + html + '</foreignObject></svg>';
+      '<foreignObject x="0" y="0" width="' + docW + '" height="' + docH + '">' + serializedHtml + '</foreignObject></svg>';
+    var blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    var blobUrl = URL.createObjectURL(blob);
     var img = new Image();
     img.onload = function(){
+      URL.revokeObjectURL(blobUrl);
       try {
         var canvas = document.createElement('canvas');
         canvas.width = Math.max(1, Math.floor(w * dpr));
@@ -1397,9 +1432,10 @@ const URL_PREVIEW_SNAPSHOT_BRIDGE = `<script data-od-url-snapshot-bridge>
       }
     };
     img.onerror = function(){
+      URL.revokeObjectURL(blobUrl);
       window.parent.postMessage({ type: 'od:snapshot:result', id: id, error: 'snapshot image failed' }, '*');
     };
-    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    img.src = blobUrl;
   }
   window.addEventListener('message', function(ev){
     var data = ev && ev.data;

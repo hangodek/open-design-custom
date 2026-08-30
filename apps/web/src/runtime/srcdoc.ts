@@ -826,17 +826,31 @@ function injectSnapshotBridge(doc: string): string {
       var cloneBody = clone.querySelector('body');
       var rootStyle = clone.getAttribute('style') || '';
       var bodyStyle = cloneBody ? cloneBody.getAttribute('style') || '' : '';
-      var bodyContent = cloneBody ? cloneBody.innerHTML : clone.innerHTML;
       var wrapperStyle = rootStyle + bodyStyle +
         'margin:0;position:relative;left:' + (-scroll.x) + 'px;top:' + (-scroll.y) + 'px;' +
         'width:' + docW + 'px;height:' + docH + 'px;overflow:visible;';
-      var html = '<div xmlns="http://www.w3.org/1999/xhtml" style="' + escapeAttribute(wrapperStyle) + '">' + bodyContent + '</div>';
+      var wrapper = document.createElement('div');
+      wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+      wrapper.setAttribute('style', wrapperStyle);
+      var container = cloneBody || clone;
+      while (container.firstChild) {
+        wrapper.appendChild(container.firstChild);
+      }
+      var serializedHtml = '';
+      try {
+        serializedHtml = new XMLSerializer().serializeToString(wrapper);
+      } catch (_) {
+        serializedHtml = '<div xmlns="http://www.w3.org/1999/xhtml" style="' + escapeAttribute(wrapperStyle) + '">' + (container.innerHTML || '') + '</div>';
+      }
       var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + capW + '" height="' + capH + '" viewBox="0 0 ' + capW + ' ' + capH + '">' +
         '<foreignObject x="0" y="0" width="' + docW + '" height="' + docH + '">' +
-        html +
+        serializedHtml +
         '</foreignObject></svg>';
+      var blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+      var blobUrl = URL.createObjectURL(blob);
       var img = new Image();
       img.onload = function(){
+        URL.revokeObjectURL(blobUrl);
         try {
           var canvas = document.createElement('canvas');
           canvas.width = Math.max(1, Math.floor(capW * dpr));
@@ -858,8 +872,11 @@ function injectSnapshotBridge(doc: string): string {
           reject(err instanceof Error ? err : new Error(String(err && err.message || err)));
         }
       };
-      img.onerror = function(){ reject(new Error('snapshot image failed')); };
-      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      img.onerror = function(){
+        URL.revokeObjectURL(blobUrl);
+        reject(new Error('snapshot image failed'));
+      };
+      img.src = blobUrl;
     });
   }
   // Exposed so the export-capture bridge (same document) can reuse this renderer.
