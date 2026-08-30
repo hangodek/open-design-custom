@@ -1240,14 +1240,23 @@ const URL_PREVIEW_SNAPSHOT_BRIDGE = `<script data-od-url-snapshot-bridge>
     'margin','margin-top','margin-right','margin-bottom','margin-left',
     'padding','padding-top','padding-right','padding-bottom','padding-left',
     'border','border-top','border-right','border-bottom','border-left','border-radius',
+    'border-color','border-width','border-style',
+    'border-top-color','border-top-width','border-top-style',
+    'border-right-color','border-right-width','border-right-style',
+    'border-bottom-color','border-bottom-width','border-bottom-style',
+    'border-left-color','border-left-width','border-left-style',
+    'border-top-left-radius','border-top-right-radius','border-bottom-left-radius','border-bottom-right-radius',
     'font','font-family','font-size','font-weight','font-style','line-height','letter-spacing',
-    'color','background-color','opacity','transform','transform-origin','overflow','overflow-x','overflow-y',
+    'color','background','background-color','background-image','background-size','background-position','background-repeat','background-clip','background-origin',
+    'opacity','transform','transform-origin','overflow','overflow-x','overflow-y',
     'white-space','text-align','vertical-align','object-fit','object-position',
     'flex','flex-direction','flex-wrap','flex-grow','flex-shrink','flex-basis',
     'grid','grid-template-columns','grid-template-rows','grid-column','grid-row',
     'gap','row-gap','column-gap','align-items','align-content','align-self',
     'justify-items','justify-content','justify-self','inset','top','right','bottom','left',
-    'z-index','box-shadow','text-shadow'
+    'z-index','box-shadow','text-shadow','outline','outline-color','outline-style','outline-width',
+    'fill','stroke','stroke-width','stroke-linecap','stroke-linejoin','stroke-dasharray','stroke-dashoffset','stroke-opacity','fill-opacity',
+    'filter','backdrop-filter','clip-path','visibility','cursor'
   ];
   function copyComputedStyle(source, target){
     if (!source || !target || source.nodeType !== 1 || target.nodeType !== 1) return;
@@ -1363,13 +1372,29 @@ const URL_PREVIEW_SNAPSHOT_BRIDGE = `<script data-od-url-snapshot-bridge>
   function canvasLooksBlank(ctx, cw, ch){
     try {
       var data = ctx.getImageData(0, 0, cw, ch).data;
-      var step = Math.max(4, Math.floor((cw * ch) / 4096)) * 4;
-      var first = null, samples = 0;
+      var totalPixels = cw * ch;
+      var step = Math.max(1, Math.floor(totalPixels / 8192)) * 4;
+      var first = null, samples = 0, diffFound = false;
       for (var i = 0; i + 3 < data.length; i += step){
         samples++;
         if (!first){ first = [data[i], data[i+1], data[i+2], data[i+3]]; continue; }
-        if (Math.abs(data[i]-first[0]) > 6 || Math.abs(data[i+1]-first[1]) > 6 ||
-            Math.abs(data[i+2]-first[2]) > 6 || Math.abs(data[i+3]-first[3]) > 6) return false;
+        if (Math.abs(data[i]-first[0]) > 4 || Math.abs(data[i+1]-first[1]) > 4 ||
+            Math.abs(data[i+2]-first[2]) > 4 || Math.abs(data[i+3]-first[3]) > 4) {
+          diffFound = true;
+          break;
+        }
+      }
+      if (diffFound) return false;
+      var cx = Math.floor(cw / 2), cy = Math.floor(ch / 2);
+      var halfW = Math.min(250, Math.floor(cw / 3)), halfH = Math.min(250, Math.floor(ch / 3));
+      if (halfW > 0 && halfH > 0) {
+        var centerData = ctx.getImageData(Math.max(0, cx - halfW), Math.max(0, cy - halfH), Math.min(cw, halfW * 2), Math.min(ch, halfH * 2)).data;
+        for (var c = 0; c + 3 < centerData.length; c += 16) {
+          if (first && (Math.abs(centerData[c]-first[0]) > 4 || Math.abs(centerData[c+1]-first[1]) > 4 ||
+              Math.abs(centerData[c+2]-first[2]) > 4 || Math.abs(centerData[c+3]-first[3]) > 4)) {
+            return false;
+          }
+        }
       }
       return samples > 8;
     } catch (_) { return false; }
