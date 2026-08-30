@@ -11919,6 +11919,7 @@ function HtmlViewer({
     if (!workspaceActive) return;
     function onMessage(ev: MessageEvent) {
       if (!isActivePreviewIframeSource(ev.source)) return;
+      const data = ev.data as { type?: unknown; fileName?: unknown } | null;
       if (
         data?.type !== 'od:preview-open-file' ||
         typeof data.fileName !== 'string' ||
