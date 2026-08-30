@@ -1635,6 +1635,23 @@ function injectSandboxShim(doc: string): string {
           url.protocol === 'mailto:';
       } catch (_) {}
       safe && window.open(href, '_blank', 'noopener,noreferrer');
+    } else {
+      var cleanHref = (href || '').split('?')[0].split('#')[0].replace(/^\.\//, '');
+      if (
+        /\.html?$/i.test(cleanHref) &&
+        !cleanHref.startsWith('http://') &&
+        !cleanHref.startsWith('https://') &&
+        !cleanHref.startsWith('//') &&
+        !cleanHref.startsWith('mailto:') &&
+        !cleanHref.startsWith('tel:') &&
+        !cleanHref.startsWith('javascript:')
+      ) {
+        e.preventDefault();
+        window.parent.postMessage({
+          type: 'od:preview-open-file',
+          fileName: cleanHref,
+        }, '*');
+      }
     }
   });
 })();</script>`;
