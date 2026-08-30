@@ -21,6 +21,9 @@ This repository is an independent, community-maintained edition of OpenDesign fo
 
 - **Streamlined Developer Lifecycle**: Replaced verbose CLI calls with ergonomic root scripts: `pnpm dev` (starts daemon and web runtime), `pnpm status`, `pnpm restart`, and `pnpm stop`.
 - **In-Place File Iteration & Restored Rollbacks**: Resolved issues where generation created fragmented numbered files (`1.html`, `2.html`, `landing-v2.html`). The model iteratively updates existing design artifacts in-place, ensuring that OpenDesign's built-in file history and rollback capabilities remain fully functional.
+- **Interactive Multi-Page Prototyping & Tab Switching**: Added intra-project link navigation inside the preview iframe. Clicking relative links (e.g. `<a href="login.html">` or `<a href="register.html">`) instantly switches the active file tab in the IDE.
+- **Intelligent Workspace Cross-Linking**: When adding new pages to a project (e.g. creating `register.html` alongside `login.html`), OpenDesign maintains design token consistency, connects relative links, and updates existing files' placeholder links (`href="#"`) in the same turn for full bidirectional navigation.
+- **Clean Multi-Artifact Delivery**: Extended plain API / BYOK streaming with full multi-artifact delivery and clean prose stripping, enabling multiple connected pages to be generated or updated in a single turn without code leaking into chat bubbles.
 - **Native Local Runtime Support**: Direct, containerless execution support across Linux, macOS, and WSL without mandatory Docker encapsulation.
 - **Strict Custom Instruction Priority**: User-level and project-level instructions maintain definitive priority over system prompts and downstream presets.
 - **Unrestricted Local & BYOK Execution**: Full compatibility with 26+ local agent CLIs (DeepSeek, Claude Code, Codex, OpenCode, Cursor, Kimi, Hermes, Antigravity, etc.) and direct Bring-Your-Own-Key (BYOK) providers.
