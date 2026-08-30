@@ -11918,21 +11918,6 @@ function HtmlViewer({
   useEffect(() => {
     if (!workspaceActive) return;
     function onMessage(ev: MessageEvent) {
-      // DEBUG: log all messages from any iframe to diagnose od:preview-open-file delivery
-      const data = ev.data as { type?: unknown; fileName?: unknown } | null;
-      if (data?.type === 'od:preview-open-file' || data?.type === 'od:preview-open-file-debug') {
-        // eslint-disable-next-line no-console
-        console.log('[od-nav-debug] message received', {
-          type: data?.type,
-          fileName: data?.fileName,
-          workspaceActive,
-          file: file.name,
-          sourceMatchIframe: ev.source === iframeRef.current?.contentWindow,
-          sourceMatchUrl: ev.source === urlPreviewIframeRef.current?.contentWindow,
-          sourceMatchSrcDoc: ev.source === srcDocPreviewIframeRef.current?.contentWindow,
-          isActive: isActivePreviewIframeSource(ev.source),
-        });
-      }
       if (!isActivePreviewIframeSource(ev.source)) return;
       if (
         data?.type !== 'od:preview-open-file' ||

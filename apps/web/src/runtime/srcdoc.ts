@@ -1562,31 +1562,17 @@ function injectSandboxShim(doc: string): string {
     return api;
   }
   function tryShim(name){
-    var works = false;
-    try { works = !!window[name] && typeof window[name].getItem === 'function'; void window[name].length; }
-    catch (_) { works = false; }
-    if (works) return;
-    try { Object.defineProperty(window, name, { configurable: true, value: makeStore() }); }
-    catch (_) { try { window[name] = makeStore(); } catch (__) {} }
+    try {
+      if (window[name] && typeof window[name].getItem === 'function') return;
+    } catch (_) {}
+    try {
+      Object.defineProperty(window, name, { configurable: true, value: makeStore() });
+    } catch (_) {
+      try { window[name] = makeStore(); } catch (__) {}
+    }
   }
   tryShim('localStorage');
   tryShim('sessionStorage');
-  // A <base href> pointing at the artifact's real /raw/ URL (injectBaseHref,
-  // below) is what lets relative asset paths resolve inside this opaque
-  // srcDoc document. That same base is what breaks history.pushState /
-  // replaceState: a bare-hash call like replaceState(null, '', '#/3') — the
-  // exact pattern generated decks use for their own slide routing — resolves
-  // against the <base> into a real http(s) URL, and the browser throws
-  // SecurityError because the DOCUMENT's own origin is the opaque "null" of
-  // about:srcdoc, which can never match a concrete origin. A deck whose own
-  // navigation function calls replaceState before it finishes updating the
-  // slide DOM (ordering varies by generated template) aborts mid-navigation
-  // on that throw, leaving the main canvas blank until a manual reload —
-  // the thumbnail rail is unaffected because it does not run the deck's
-  // script per-thumbnail. Wrap both methods so that failure degrades to a
-  // no-op instead of interrupting the caller: the iframe's address bar was
-  // never visible to the user anyway, so losing the hash update here is
-  // invisible.
   function shimHistoryMethod(name){
     try {
       var h = window.history;
@@ -1603,38 +1589,50 @@ function injectSandboxShim(doc: string): string {
   }
   shimHistoryMethod('pushState');
   shimHistoryMethod('replaceState');
-  document.addEventListener('click', (e) => {
+  function isHtml(name){
+    if (!name || typeof name !== 'string') return false;
+    var lower = name.toLowerCase();
+    return lower.endsWith('.html') || lower.endsWith('.htm');
+  }
+  function isSafeRelative(name){
+    if (!name || name.charAt(0) === '/') return false;
+    var parts = name.split('/');
+    for (var i = 0; i < parts.length; i++){
+      if (!parts[i] || parts[i] === '.' || parts[i] === '..') return false;
+    }
+    return true;
+  }
+  document.addEventListener('click', function(e){
     if (!e.target || !(e.target instanceof Element)) return;
     var link = e.target.closest('a[href]');
     if (!link) return;
     var href = link.getAttribute('href');
     if (href === null) return;
-    var isAnchor = href.startsWith('#') || href === '';
+    var isAnchor = href.indexOf('#') === 0 || href === '';
     if (isAnchor) {
       e.preventDefault();
       if (href === '' || href === '#') {
         window.scrollTo({ top: 0 });
-        history.replaceState(null, '', ' ');
+        try { history.replaceState(null, '', ' '); } catch (_) {}
       } else {
         var targetId = href.slice(1);
         var target = targetId ? document.getElementById(targetId) : null;
         if (target) {
           target.scrollIntoView();
-          location.hash === href && history.replaceState(null, '', ' ');
-          location.hash = href;
+          try {
+            if (location.hash === href) history.replaceState(null, '', ' ');
+            location.hash = href;
+          } catch (_) {}
         }
       }
     } else if (link.getAttribute('target') === '_blank') {
       e.preventDefault();
-      let safe = false;
+      var safe = false;
       try {
-        var url = new URL(href, location.href);
-        safe =
-          url.protocol === 'http:' ||
-          url.protocol === 'https:' ||
-          url.protocol === 'mailto:';
+        var parsedUrl = new URL(href, location.href);
+        safe = parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:' || parsedUrl.protocol === 'mailto:';
       } catch (_) {}
-      safe && window.open(href, '_blank', 'noopener,noreferrer');
+      if (safe) window.open(href, '_blank', 'noopener,noreferrer');
     } else {
       var fileName = null;
       try {
@@ -1663,12 +1661,7 @@ function injectSandboxShim(doc: string): string {
               }
               if (fileRoot && nextUrl.pathname.indexOf(fileRoot) === 0) {
                 var candidate = decodeURIComponent(nextUrl.pathname.slice(fileRoot.length));
-                if (
-                  candidate &&
-                  candidate.charAt(0) !== '/' &&
-                  !candidate.split('/').some(function(p){ return !p || p === '.' || p === '..'; }) &&
-                  /\.html?$/i.test(candidate)
-                ) {
+                if (isSafeRelative(candidate) && isHtml(candidate)) {
                   fileName = candidate;
                 }
               }
@@ -1677,13 +1670,12 @@ function injectSandboxShim(doc: string): string {
         }
       } catch (_) {}
       if (!fileName) {
-        var cleanHref = (href || '')
-          .split('?')[0]
-          .split('#')[0]
-          .replace(/^\.\//, '')
-          .replace(/^\//, '');
+        var cleanHref = (href || '').split('?')[0].split('#')[0];
+        if (cleanHref.indexOf('./') === 0) cleanHref = cleanHref.slice(2);
+        if (cleanHref.indexOf('/') === 0) cleanHref = cleanHref.slice(1);
         if (
-          /\.html?$/i.test(cleanHref) &&
+          isHtml(cleanHref) &&
+          isSafeRelative(cleanHref) &&
           !cleanHref.startsWith('http://') &&
           !cleanHref.startsWith('https://') &&
           !cleanHref.startsWith('//') &&
@@ -1702,7 +1694,7 @@ function injectSandboxShim(doc: string): string {
         }, '*');
       }
     }
-  });
+  }, true);
 })();</script>`;
   if (/<head[^>]*>/i.test(doc))
     return doc.replace(/<head[^>]*>/i, (m) => `${m}${shim}`);

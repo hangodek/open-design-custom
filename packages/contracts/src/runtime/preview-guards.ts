@@ -39,12 +39,14 @@ export function buildPreviewSandboxShim(): string {
     return api;
   }
   function tryShim(name){
-    var works = false;
-    try { works = !!window[name] && typeof window[name].getItem === 'function'; void window[name].length; }
-    catch (_) { works = false; }
-    if (works) return;
-    try { Object.defineProperty(window, name, { configurable: true, value: makeStore() }); }
-    catch (_) { try { window[name] = makeStore(); } catch (__) {} }
+    try {
+      if (window[name] && typeof window[name].getItem === 'function') return;
+    } catch (_) {}
+    try {
+      Object.defineProperty(window, name, { configurable: true, value: makeStore() });
+    } catch (_) {
+      try { window[name] = makeStore(); } catch (__) {}
+    }
   }
   tryShim('localStorage');
   tryShim('sessionStorage');
@@ -54,13 +56,29 @@ export function buildPreviewSandboxShim(): string {
       var original = h && h[name];
       if (typeof original !== 'function') return;
       h[name] = function(state, title, url){
-        try { return original.call(h, state, title, url); }
-        catch (_) { return undefined; }
+        try {
+          return original.call(h, state, title, url);
+        } catch (_) {
+          return undefined;
+        }
       };
     } catch (_) {}
   }
   shimHistoryMethod('pushState');
   shimHistoryMethod('replaceState');
+  function isHtml(name){
+    if (!name || typeof name !== 'string') return false;
+    var lower = name.toLowerCase();
+    return lower.endsWith('.html') || lower.endsWith('.htm');
+  }
+  function isSafeRelative(name){
+    if (!name || name.charAt(0) === '/') return false;
+    var parts = name.split('/');
+    for (var i = 0; i < parts.length; i++){
+      if (!parts[i] || parts[i] === '.' || parts[i] === '..') return false;
+    }
+    return true;
+  }
   document.addEventListener('click', function(e){
     if (!e.target || !(e.target instanceof Element)) return;
     var link = e.target.closest('a[href]');
@@ -72,14 +90,16 @@ export function buildPreviewSandboxShim(): string {
       e.preventDefault();
       if (href === '' || href === '#') {
         window.scrollTo({ top: 0 });
-        history.replaceState(null, '', ' ');
+        try { history.replaceState(null, '', ' '); } catch (_) {}
       } else {
         var targetId = href.slice(1);
         var target = targetId ? document.getElementById(targetId) : null;
         if (target) {
           target.scrollIntoView();
-          if (location.hash === href) history.replaceState(null, '', ' ');
-          location.hash = href;
+          try {
+            if (location.hash === href) history.replaceState(null, '', ' ');
+            location.hash = href;
+          } catch (_) {}
         }
       }
     } else if (link.getAttribute('target') === '_blank') {
@@ -118,12 +138,7 @@ export function buildPreviewSandboxShim(): string {
               }
               if (fileRoot && nextUrl.pathname.indexOf(fileRoot) === 0) {
                 var candidate = decodeURIComponent(nextUrl.pathname.slice(fileRoot.length));
-                if (
-                  candidate &&
-                  candidate.charAt(0) !== '/' &&
-                  !candidate.split('/').some(function(p){ return !p || p === '.' || p === '..'; }) &&
-                  /\.html?$/i.test(candidate)
-                ) {
+                if (isSafeRelative(candidate) && isHtml(candidate)) {
                   fileName = candidate;
                 }
               }
@@ -132,13 +147,12 @@ export function buildPreviewSandboxShim(): string {
         }
       } catch (_) {}
       if (!fileName) {
-        var cleanHref = (href || '')
-          .split('?')[0]
-          .split('#')[0]
-          .replace(/^\.\//, '')
-          .replace(/^\//, '');
+        var cleanHref = (href || '').split('?')[0].split('#')[0];
+        if (cleanHref.indexOf('./') === 0) cleanHref = cleanHref.slice(2);
+        if (cleanHref.indexOf('/') === 0) cleanHref = cleanHref.slice(1);
         if (
-          /\.html?$/i.test(cleanHref) &&
+          isHtml(cleanHref) &&
+          isSafeRelative(cleanHref) &&
           !cleanHref.startsWith('http://') &&
           !cleanHref.startsWith('https://') &&
           !cleanHref.startsWith('//') &&
@@ -157,7 +171,7 @@ export function buildPreviewSandboxShim(): string {
         }, '*');
       }
     }
-  });
+  }, true);
 })();</script>`;
 }
 
