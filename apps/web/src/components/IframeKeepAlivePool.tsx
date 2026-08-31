@@ -91,7 +91,11 @@ export function IframeKeepAliveProvider({
 
   const invalidateKey = (key: string) => {
     keyRevisionsRef.current.set(key, (keyRevisionsRef.current.get(key) ?? 0) + 1);
-    for (const listener of keyListenersRef.current.get(key) ?? []) listener();
+    const listeners = Array.from(keyListenersRef.current.get(key) ?? []);
+    if (listeners.length === 0) return;
+    queueMicrotask(() => {
+      for (const listener of listeners) listener();
+    });
   };
 
   const removeEntry = (key: string): boolean => {
