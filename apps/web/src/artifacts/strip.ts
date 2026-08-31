@@ -140,6 +140,72 @@ export function stripSupersededArtifacts(
   return result;
 }
 
+/**
+ * Compress an artifact's HTML body for transcript delivery.
+ * Removes bulk data that wastes tokens without aiding revision:
+ *   - base64 data URIs (images, fonts)
+ *   - Long SVG path `d="..."` data strings (>200 chars)
+ *   - HTML comments longer than 80 chars
+ *   - CSS comment blocks inside <style> tags
+ *   - Excessive blank lines and whitespace inside CSS
+ */
+export function compressArtifactBodyForTranscript(html: string): string {
+  let result = html
+    // Strip base64 data URIs (images, fonts, etc.)
+    .replace(/data:[a-z/+]+;base64,[A-Za-z0-9+/=]{40,}/g, '[base64-data-omitted]')
+    // Strip long SVG path data strings
+    .replace(/\bd="[^"]{200,}"/g, 'd="[path-data-omitted]"')
+    // Strip HTML comments longer than 80 chars (short structural ones preserved)
+    .replace(/<!--[\s\S]{80,}?-->/g, '')
+    // Collapse 3+ blank lines to 1
+    .replace(/(\n\s*){3,}/g, '\n\n');
+
+  // Strip CSS comments inside <style> tags and collapse multi-spaces
+  result = result.replace(/(<style[^>]*>)(.*?)(<\/style>)/gis, (_match, open, cssBody, close) => {
+    const cleanedCss = cssBody
+      .replace(/\/\*.*?\*\//gs, '')
+      .replace(/[ \t]{2,}/g, ' ');
+    return `${open}${cleanedCss}${close}`;
+  });
+
+  return result;
+}
+
+/**
+ * Apply compressArtifactBodyForTranscript to every real artifact block in content.
+ */
+export function compressArtifactsInTranscript(content: string): string {
+  let result = '';
+  let cursor = 0;
+  while (cursor <= content.length) {
+    const tail = content.slice(cursor);
+    const { ranges: baseRanges, unclosedFenceStart } = computeSkipRanges(tail);
+    const ranges: Range[] =
+      unclosedFenceStart !== null ? [...baseRanges, [unclosedFenceStart, tail.length]] : baseRanges;
+    const open = findRealOpen(tail, 0, ranges);
+    if (open === -1) {
+      result += tail;
+      break;
+    }
+    const closeTag = tail.indexOf('>', open);
+    if (closeTag === -1) {
+      result += tail;
+      break;
+    }
+    const end = findUnskipped(tail, CLOSE, closeTag, ranges);
+    if (end === -1) {
+      result += tail;
+      break;
+    }
+    const openTag = tail.slice(open, closeTag + 1);
+    const body = tail.slice(closeTag + 1, end);
+    const compressed = compressArtifactBodyForTranscript(body);
+    result += tail.slice(0, open) + openTag + compressed + CLOSE;
+    cursor += end + CLOSE.length;
+  }
+  return result;
+}
+
 function findSingleRecoverableHtmlFence(content: string): MarkdownFenceRange | null {
   HTML_FENCE_RE.lastIndex = 0;
   let recovered: MarkdownFenceRange | null = null;

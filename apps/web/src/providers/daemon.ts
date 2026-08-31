@@ -62,6 +62,7 @@ function detectClientType(): 'desktop' | 'web' | 'unknown' {
 }
 import { parseSseFrame } from './sse';
 import {
+  compressArtifactsInTranscript,
   extractRawArtifactBlocks,
   stripSupersededArtifacts,
   summarizeArtifactsForTranscript,
@@ -289,6 +290,7 @@ export function buildDaemonTranscript(history: ChatMessage[], targetAgentId?: st
   const processedTurns: string[] = new Array(scopedHistory.length);
   for (let i = scopedHistory.length - 1; i >= 0; i -= 1) {
     const m = scopedHistory[i];
+    if (!m) continue;
     const trimmed = m.content.trim();
     let sanitized =
       m.role === 'assistant'
@@ -301,6 +303,7 @@ export function buildDaemonTranscript(history: ChatMessage[], targetAgentId?: st
 
     if (isPlainOrApi && m.role === 'assistant') {
       sanitized = stripSupersededArtifacts(sanitized, seenArtifactKeys);
+      sanitized = compressArtifactsInTranscript(sanitized);
     }
 
     const maxChars = isPlainOrApi && m.role === 'assistant' ? 100_000 : MAX_TRANSCRIPT_MESSAGE_CHARS;
