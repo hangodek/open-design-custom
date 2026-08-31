@@ -173,6 +173,9 @@ export const antigravityAgentDef = {
   versionArgs: ['--version'],
   fallbackModels: [
     DEFAULT_MODEL_OPTION,
+    { id: 'Gemini 3.7 Flash (High)', label: 'Gemini 3.7 Flash (High)' },
+    { id: 'Gemini 3.7 Flash (Medium)', label: 'Gemini 3.7 Flash (Medium)' },
+    { id: 'Gemini 3.7 Flash (Low)', label: 'Gemini 3.7 Flash (Low)' },
     { id: 'Gemini 3.1 Pro (High)', label: 'Gemini 3.1 Pro (High)' },
     { id: 'Gemini 3.1 Pro (Low)', label: 'Gemini 3.1 Pro (Low)' },
     { id: 'Gemini 3.5 Flash (High)', label: 'Gemini 3.5 Flash (High)' },

@@ -717,6 +717,9 @@ test('antigravity passes prompt via stdin with --input-format text', () => {
     antigravity.fallbackModels.map((m) => m.id),
     [
       'default',
+      'Gemini 3.7 Flash (High)',
+      'Gemini 3.7 Flash (Medium)',
+      'Gemini 3.7 Flash (Low)',
       'Gemini 3.1 Pro (High)',
       'Gemini 3.1 Pro (Low)',
       'Gemini 3.5 Flash (High)',
