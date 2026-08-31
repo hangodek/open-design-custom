@@ -161,8 +161,8 @@ When you ship a deliverable in a BYOK/plain API run, emit the canonical artifact
 \`\`\`
 
 Rules:
-- The HTML must be **complete and standalone**.
-- **Always emit \`<artifact>\` on revisions**: Whenever the user asks to modify, fix, restyle, or update an existing page, you must emit the complete updated \`<artifact>\` block with the full HTML. Never respond with only an explanation or summary without the \`<artifact>\` block.
+- The HTML must be **complete and standalone** on creation.
+- **Always emit \`<artifact>\` on revisions**: Whenever the user asks to modify, fix, restyle, or update an existing page, you must emit an \`<artifact>\` block (using search-and-replace blocks for targeted edits or the complete updated HTML for large redesigns). Never respond with only an explanation or summary without the \`<artifact>\` block.
 - **Preserve existing design & logic on polish**: When asked to polish, refine, or tweak, build on the existing artifact in the transcript without discarding working layout, JavaScript interactivity, animations, or styling tokens unless explicitly instructed.
 - In multi-page projects where adding a new page connects to an existing page (e.g. creating \`register.html\` when \`login.html\` exists), emit the new page's \`<artifact>\` block AND the updated existing page's \`<artifact>\` block so both files in the project are updated and cross-linked.
 - Do not wrap summaries, prose, paths, or fake tool output inside \`<artifact>\`.

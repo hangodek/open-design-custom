@@ -55,9 +55,9 @@ Unless the user explicitly requests multiple files, the main HTML file must be c
 
 const TEXT_ARTIFACT_HANDOFF = `## Delivery
 
-The \`<artifact>\` block is the source of truth. Deliver each page or document inside an \`<artifact identifier="kebab-slug" type="text/html" title="...">\` block containing the complete standalone document.
+The \`<artifact>\` block is the source of truth. Deliver each page or document inside an \`<artifact identifier="kebab-slug" type="text/html" title="...">\` block.
 - For a single-page brief, end the build with one complete \`<artifact>\` block.
-- Whenever the user asks for a revision, modification, polish, or design adjustment to an existing page, you must emit the complete updated \`<artifact>\` block containing the full updated HTML document. Never reply with only a description or summary without the \`<artifact>\` block.
+- Whenever the user asks for a revision, modification, polish, or design adjustment to an existing page, you must emit an \`<artifact>\` block. For small targeted edits (colors, text, button tweaks, single component changes), you may emit search-and-replace blocks (\`<<<<<<< SEARCH\` ... \`=======\` ... \`>>>>>>> REPLACE\`) inside \`<artifact>\`; for full-page builds or large overhauls, emit the complete updated document. Never reply with only a description or summary without the \`<artifact>\` block.
 - When polishing or refining, preserve working layout, interactive JavaScript behaviors, 3D/canvas scripts, and existing sections from the latest artifact in the transcript; perform surgical updates instead of redesigning the whole app.
 - In multi-page projects or flows where creating a new page connects with an existing page (e.g. creating \`register.html\` when \`login.html\` exists), emit the new page's \`<artifact>\` block AND the updated existing page's \`<artifact>\` block so all files in the project are updated and linked together.
 Never claim to have written project files or wrap prose or paths in \`<artifact>\`.`;

@@ -18,6 +18,7 @@ import { createHtmlArtifactManifest, inferLegacyManifest } from '../artifacts/ma
 import { resolveHtmlPointerArtifactTarget } from '../artifacts/pointer';
 import { validateHtmlArtifact } from '../artifacts/validate';
 import { recoverHtmlDocumentFromMarkdownFence, recoverStandaloneHtmlDocument, resolvePersistedArtifactHtml } from '../artifacts/recover';
+import { applySearchReplacePatch, isSearchReplacePatch, resolveLiveArtifactHtml } from '../artifacts/patch';
 import { createArtifactParser } from '../artifacts/parser';
 import { useI18n } from '../i18n';
 import {
@@ -3724,12 +3725,6 @@ export function ProjectView({
       sourceText?: string,
       options: { pointerMinMtime?: number } = {},
     ) => {
-      const persistedHtml = resolvePersistedArtifactHtml({
-        artifactHtml: art.html,
-        identifier: art.identifier,
-        sourceText,
-      });
-      const artifactToPersist = persistedHtml === art.html ? art : { ...art, html: persistedHtml };
       const baseName = artifactBaseNameFor(art);
       const ext = artifactExtensionFor(art);
       const currentProjectFiles = projectFilesSnapshot ?? projectFilesRef.current;
@@ -3751,6 +3746,37 @@ export function ProjectView({
         n += 1;
       }
       if (!updatesExplicitlyIdentifiedFile) fileName = collisionFileName;
+
+      let baseHtml: string | null = null;
+      if (ext === '.html' && isSearchReplacePatch(art.html)) {
+        const targetFile = currentProjectFiles.find(
+          (f) => f.name === fileName || (art.identifier && f.name.startsWith(art.identifier)),
+        );
+        if (targetFile) {
+          baseHtml = await readProjectHtml(targetFile.name);
+        }
+        if (!baseHtml && savedArtifactRef.current) {
+          baseHtml = await readProjectHtml(savedArtifactRef.current);
+        }
+        if (!baseHtml && artifact?.html && !isSearchReplacePatch(artifact.html)) {
+          baseHtml = artifact.html;
+        }
+      }
+
+      let persistedHtml = art.html;
+      if (baseHtml && isSearchReplacePatch(art.html)) {
+        const patchResult = applySearchReplacePatch(baseHtml, art.html);
+        if (patchResult.ok) {
+          persistedHtml = patchResult.html;
+        }
+      } else {
+        persistedHtml = resolvePersistedArtifactHtml({
+          artifactHtml: art.html,
+          identifier: art.identifier,
+          sourceText,
+        });
+      }
+      const artifactToPersist = persistedHtml === art.html ? art : { ...art, html: persistedHtml };
       if (ext === '.html') {
         const pointerProjectFiles = filterProjectFilesByMinMtime(
           currentProjectFiles,
@@ -7537,14 +7563,15 @@ export function ProjectView({
                   },
             );
           } else if (ev.type === 'artifact:end') {
+            const liveResolvedHtml = resolveLiveArtifactHtml(ev.fullContent, artifact?.html);
             parsedArtifact = parsedArtifact
-              ? { ...parsedArtifact, html: ev.fullContent }
+              ? { ...parsedArtifact, html: liveResolvedHtml }
               : {
                   identifier: ev.identifier,
                   title: '',
-                  html: ev.fullContent,
+                  html: liveResolvedHtml,
                 };
-            setArtifact((prev) => (prev ? { ...prev, html: ev.fullContent } : null));
+            setArtifact((prev) => (prev ? { ...prev, html: liveResolvedHtml } : null));
           }
         }
       };
@@ -7629,14 +7656,15 @@ export function ProjectView({
           cancelSendTextBuffer();
           for (const ev of parser.flush()) {
             if (ev.type === 'artifact:end') {
+              const liveResolvedHtml = resolveLiveArtifactHtml(ev.fullContent, artifact?.html);
               parsedArtifact = parsedArtifact
-                ? { ...parsedArtifact, html: ev.fullContent }
+                ? { ...parsedArtifact, html: liveResolvedHtml }
                 : {
                     identifier: ev.identifier,
                     title: '',
-                    html: ev.fullContent,
+                    html: liveResolvedHtml,
                   };
-              setArtifact((prev) => (prev ? { ...prev, html: ev.fullContent } : null));
+              setArtifact((prev) => (prev ? { ...prev, html: liveResolvedHtml } : null));
             }
           }
           const emptyApiResponse =
