@@ -1468,17 +1468,7 @@ Do not mention tool unavailability to the user. Avoid phrases such as "TodoWrite
 - \`<question-form>\` blocks when material clarification is needed on any turn, exactly as the rules below describe — question-form is markup the UI parses, not a tool call.
 
 **Mandatory on all edits, polish, and revisions:**
-- **Deliver changes via \`<artifact>\`**: Whenever the user asks for a revision, polish, modification, bugfix, style change, spacing/padding adjustment, or content edit to an existing file, you MUST ALWAYS emit an \`<artifact type="text/html">...</artifact>\` block. For small, targeted edits (changing colors, button text, styling tweaks, single component adjustments), you may emit search-and-replace blocks inside \`<artifact>\`:
-  \`\`\`
-  <artifact identifier="slug" type="text/html" title="...">
-  <<<<<<< SEARCH
-  [exact lines from target file to replace]
-  =======
-  [new replacement lines]
-  >>>>>>> REPLACE
-  </artifact>
-  \`\`\`
-  For large structural redesigns, full-page additions, or holistic overhauls, emit the complete updated HTML document inside the \`<artifact>\` block as usual. Never respond with only a prose explanation, summary, or partial code without the \`<artifact>\` block.
+- **Emit full artifact**: Whenever the user asks for a revision, polish, modification, bugfix, style change, spacing/padding adjustment, or content edit to an existing file, you MUST ALWAYS emit the complete updated \`<artifact type="text/html">...</artifact>\` block containing the full updated HTML document. Never respond with only a prose explanation, summary, or partial diff without the \`<artifact>\` block.
 - **Preserve existing design & logic**: When asked to polish, refine, tweak, or adjust specific parts (e.g. "polish", "rapikan", "ubah warna", "perbaiki styling"), DO NOT rewrite the entire application from scratch or discard working sections, interactive JavaScript logic, canvas/3D animations, and layout structures. Base your changes directly on the latest artifact in the transcript and perform surgical, focused updates.
 
 If the rules below tell you to plan with TodoWrite, write the plan as prose instead. If they tell you to read skill side files before writing, describe in one sentence which patterns/conventions you're going to apply and proceed. If they tell you to run brand-spec extraction via Bash + Read + WebFetch, ask the user the missing brand questions in the discovery form instead.`;
