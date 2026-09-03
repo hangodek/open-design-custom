@@ -709,10 +709,8 @@ test('antigravity passes prompt via stdin with --input-format text', () => {
 
   assert.equal(antigravity.maxPromptArgBytes, undefined);
 
-  // Picker exposes the synthetic Default + the 8 labels agy's TUI
-  // Switch-Model surfaces for consumer-tier accounts. The set is small
-  // enough to ship statically; revisit when upstream adds an `agy
-  // models` subcommand (also tracked under issue #35).
+  // Picker exposes the synthetic Default + the 11 labels agy's TUI
+  // Switch-Model surfaces for consumer-tier accounts.
   assert.deepEqual(
     antigravity.fallbackModels.map((m) => m.id),
     [
@@ -737,6 +735,60 @@ test('antigravity passes prompt via stdin with --input-format text', () => {
   // settings UI hides the "Custom (fill below)" option when this is
   // `false`. Remove this opt-out once upstream wires #35.
   assert.equal(antigravity.supportsCustomModel, false);
+});
+
+test('antigravity gates non-interactive permission bypass on the detected CLI capability', () => {
+  agentCapabilities.delete('antigravity');
+  assert.deepEqual(antigravity.helpArgs, ['--help']);
+  assert.deepEqual(antigravity.capabilityFlags, {
+    '--dangerously-skip-permissions': 'skipPermissions',
+  });
+  assert.deepEqual(antigravity.buildArgs('', [], [], {}), ['--input-format', 'text']);
+
+  agentCapabilities.set('antigravity', { skipPermissions: true });
+  try {
+    assert.deepEqual(antigravity.buildArgs('', [], [], {}), [
+      '--dangerously-skip-permissions',
+      '--input-format',
+      'text',
+    ]);
+  } finally {
+    agentCapabilities.delete('antigravity');
+  }
+});
+
+test('antigravity keeps log argv order when permission bypass is unavailable', () => {
+  agentCapabilities.set('antigravity', { skipPermissions: false });
+  try {
+    assert.deepEqual(
+      antigravity.buildArgs('', [], [], {}, {
+        agentLogFilePath: '/tmp/od-agy-test.log',
+      }),
+      ['--log-file', '/tmp/od-agy-test.log', '--input-format', 'text'],
+    );
+  } finally {
+    agentCapabilities.delete('antigravity');
+  }
+});
+
+test('antigravity places permission bypass after log args', () => {
+  agentCapabilities.set('antigravity', { skipPermissions: true });
+  try {
+    assert.deepEqual(
+      antigravity.buildArgs('', [], [], {}, {
+        agentLogFilePath: '/tmp/od-agy-test.log',
+      }),
+      [
+        '--log-file',
+        '/tmp/od-agy-test.log',
+        '--dangerously-skip-permissions',
+        '--input-format',
+        'text',
+      ],
+    );
+  } finally {
+    agentCapabilities.delete('antigravity');
+  }
 });
 
 // `agy` reads `~/.gemini/antigravity-cli/settings.json` on every CLI

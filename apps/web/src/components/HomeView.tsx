@@ -2538,9 +2538,7 @@ export function HomeView({
         const targetId = chip.action.pluginId;
         const record = plugins.find((p) => p.id === targetId);
         if (!record) {
-          setError(
-            `Bundled scenario "${targetId}" is not installed. Reinstall the daemon to restore the default plugin set.`,
-          );
+          setError(t('home.bundledScenarioMissing', { scenarioId: targetId }));
           return;
         }
         const mediaSurface = homeMediaSurfaceForChipId(chip.id);
@@ -2574,6 +2572,7 @@ export function HomeView({
             // template/preset or types their own prompt.
             suppressPromptUpdate: true,
             replaceWithoutConfirmation: true,
+            deferApply: true,
           });
           return;
         }

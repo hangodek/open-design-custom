@@ -4234,6 +4234,7 @@ export function FileWorkspace({
         {initialMaterializationPending ? (
           <DesignFilesPanel
             projectId={projectId}
+            projectKind={projectKind}
             viewerOnly
             downloadPending
             files={[]}
@@ -4279,6 +4280,7 @@ export function FileWorkspace({
           <DesignFilesPanel
             key={projectId}
             projectId={projectId}
+            projectKind={projectKind}
             filesRefreshKey={filesRefreshKey}
             viewerOnly={viewerOnly}
             downloadPending={fileSyncBadge === 'downloading'}
@@ -4300,6 +4302,8 @@ export function FileWorkspace({
                   page_name: 'file_manager',
                   area: 'file_manager',
                   element: 'open_sketch',
+                  project_id: projectId,
+                  project_kind: projectKind,
                 });
               }
               openFile(name);
@@ -4311,6 +4315,8 @@ export function FileWorkspace({
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'delete',
+                project_id: projectId,
+                project_kind: projectKind,
               });
               void handleDelete(name);
             }}
@@ -4319,6 +4325,8 @@ export function FileWorkspace({
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'delete',
+                project_id: projectId,
+                project_kind: projectKind,
               });
               return handleDeleteMany(names);
             }}
@@ -4327,6 +4335,8 @@ export function FileWorkspace({
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'upload',
+                project_id: projectId,
+                project_kind: projectKind,
               });
               fileInputRef.current?.click();
             }}
@@ -4336,6 +4346,8 @@ export function FileWorkspace({
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'paste',
+                project_id: projectId,
+                project_kind: projectKind,
               });
               void createMarkdownDocument();
             }}
@@ -4344,6 +4356,8 @@ export function FileWorkspace({
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'new_sketch',
+                project_id: projectId,
+                project_kind: projectKind,
               });
               void startNewSketch();
             }}
@@ -4352,6 +4366,8 @@ export function FileWorkspace({
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'new_browser',
+                project_id: projectId,
+                project_kind: projectKind,
               });
               openBrowserTab();
             }}
@@ -4360,6 +4376,8 @@ export function FileWorkspace({
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'create_design_system',
+                project_id: projectId,
+                project_kind: projectKind,
               });
               setPendingDesignSystemCreateEntry('project_canvas');
               navigate({ kind: 'design-system-create' });
@@ -4373,6 +4391,8 @@ export function FileWorkspace({
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'library',
+                project_id: projectId,
+                project_kind: projectKind,
               });
               setShowLibraryPicker(true);
             }}
@@ -4404,6 +4424,7 @@ export function FileWorkspace({
                   area: 'sketch_editor',
                   result: result === false ? 'failed' : 'success',
                   project_id: projectId,
+                  project_kind: projectKind,
                 });
                 return result;
               }}
@@ -4414,6 +4435,7 @@ export function FileWorkspace({
                   area: 'sketch_editor',
                   result: result === false ? 'failed' : 'success',
                   project_id: projectId,
+                  project_kind: projectKind,
                 });
                 return result;
               }}
