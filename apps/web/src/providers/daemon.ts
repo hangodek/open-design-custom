@@ -86,7 +86,6 @@ const API_MODE_AGENT_IDS = new Set([
   'bedrock-api',
 ]);
 const PLAIN_OR_API_AGENT_IDS = new Set([
-  'antigravity',
   'deepseek',
   'qwen',
   'atomcode',

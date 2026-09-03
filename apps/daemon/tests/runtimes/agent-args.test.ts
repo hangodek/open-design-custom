@@ -694,18 +694,25 @@ test('antigravity passes prompt via stdin with --input-format text', () => {
     rmSync(settingsDir, { recursive: true, force: true });
   }
 
-  // Argv must NOT carry `-c` even on follow-up turns.
+  // Resumes session via `--conversation <id>` on follow-up turns.
   const followUp = antigravity.buildArgs('next message', [], [], {}, {
     hasPriorAssistantTurn: true,
+    resumeSessionId: '53941244-2831-4ee1-b6c4-9c435bbac44d',
   });
-  assert.deepEqual(followUp, ['--input-format', 'text']);
+  assert.deepEqual(followUp, [
+    '--conversation',
+    '53941244-2831-4ee1-b6c4-9c435bbac44d',
+    '--input-format',
+    'text',
+  ]);
   assert.equal(followUp.includes('-c'), false);
 
   const firstTurn = antigravity.buildArgs('first', [], [], {}, {
     hasPriorAssistantTurn: false,
   });
   assert.deepEqual(firstTurn, ['--input-format', 'text']);
-  assert.equal(antigravity.resumesSessionViaCli, undefined);
+  assert.equal(antigravity.resumesSessionViaCli, true);
+  assert.equal(antigravity.capturesSessionIdFromStream, true);
 
   assert.equal(antigravity.maxPromptArgBytes, undefined);
 

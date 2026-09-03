@@ -4,6 +4,7 @@ import {
   FORM_ANSWERED_GENERIC_OVERRIDE,
   composeChatUserRequestForAgent,
   createFinalizedMessageTelemetryReporter,
+  isArtifactRevisionIntent,
   shouldReportRunCompletedFromMessage,
   shouldReportRunCompletionTelemetryFallbackStatus,
   telemetryPromptFromRunRequest,
@@ -312,6 +313,33 @@ describe('Langfuse message finalization gate', () => {
     expect(composeChatUserRequestForAgent('legacy fallback must not leak', '', {
       skipTranscript: true,
     })).toBe('(No extra typed instruction.)');
+  });
+
+  it('classifies conversational inquiries separately from artifact revisions', () => {
+    expect(isArtifactRevisionIntent('you know what is my project right ? you can read the working directory to see it ?')).toBe(false);
+    expect(isArtifactRevisionIntent('can you read our current working directory?')).toBe(false);
+    expect(isArtifactRevisionIntent('what is in this file?')).toBe(false);
+    expect(isArtifactRevisionIntent('why did you choose this layout?')).toBe(false);
+    expect(isArtifactRevisionIntent('bisa baca direktori project ini?')).toBe(false);
+
+    expect(isArtifactRevisionIntent('make the design simpler and more readable')).toBe(true);
+    expect(isArtifactRevisionIntent('change background to dark')).toBe(true);
+    expect(isArtifactRevisionIntent('add a property card with price')).toBe(true);
+    expect(isArtifactRevisionIntent('ubah warna tombol jadi biru')).toBe(true);
+  });
+
+  it('directs conversational questions to answer directly in prose without regenerating artifacts', () => {
+    const transcript = '## user\nmake design\n\n## assistant\n<artifact>...</artifact>';
+    const question = 'you know what is my project right ? you can read the working directory to see it ?';
+    const composed = composeChatUserRequestForAgent(transcript, question);
+
+    expect(composed).toContain('## Active user request (execute this turn)\n' + question);
+    expect(composed).toContain('The user is asking a conversational question or inquiry. Answer directly in clear prose without generating or updating an HTML artifact unless explicitly requested.');
+    expect(composed).not.toContain('updating the existing artifact in-place and emitting the complete updated');
+
+    const revision = 'make the button blue';
+    const composedRevision = composeChatUserRequestForAgent(transcript, revision);
+    expect(composedRevision).toContain('updating the existing artifact in-place and emitting the complete updated `<artifact type="text/html">...</artifact>` block.');
   });
 
   it('invokes Langfuse reporting once when the final message write is marked', () => {

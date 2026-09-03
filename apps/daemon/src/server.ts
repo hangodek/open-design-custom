@@ -2052,6 +2052,20 @@ function formAnswerTransitionForCurrentPrompt(currentPrompt) {
   return lines.join('\n');
 }
 
+export function isArtifactRevisionIntent(prompt: string): boolean {
+  if (!prompt || typeof prompt !== 'string') return true;
+  const trimmed = prompt.trim();
+  // Action verbs that indicate code generation / modification / design revisions
+  const isActionVerb = /\b(add|remove|change|update|fix|modify|delete|replace|style|color|redesign|simplify|make|build|create|tweak|polish|adjust|align|convert|tambah|ubah|ganti|perbaiki|buat|bikin|rapikan|sesuaikan)\b/i.test(trimmed);
+  if (isActionVerb) return true;
+  // Questions or conversational inquiries
+  const isQuestion = /^(what|why|how|where|when|who|is|are|can you (read|tell|check|see|explain|help)|do you (know|have|see)|tell me about|explain|describe)\b/i.test(trimmed) ||
+    /^(apa|kenapa|mengapa|bagaimana|bisa (baca|lihat|jelaskan|cek|bantu)|apakah kamu (tahu|tau|bisa))\b/i.test(trimmed) ||
+    /\?$/.test(trimmed);
+  if (isQuestion) return false;
+  return true;
+}
+
 export function composeChatUserRequestForAgent(
   message,
   currentPrompt,
@@ -2084,9 +2098,13 @@ export function composeChatUserRequestForAgent(
       currentPrompt.trim() &&
       message.includes('## assistant')
     ) {
+      const isRevision = isArtifactRevisionIntent(currentPrompt);
+      const directive = isRevision
+        ? 'Below is the conversation history and previous artifact code. Fulfill the active user request above by updating the existing artifact in-place and emitting the complete updated `<artifact type="text/html">...</artifact>` block.'
+        : 'Below is the conversation history. The user is asking a conversational question or inquiry. Answer directly in clear prose without generating or updating an HTML artifact unless explicitly requested.';
       return [
         `## Active user request (execute this turn)\n${currentPrompt.trim()}`,
-        `## Conversation history & prior artifacts\nBelow is the conversation history and previous artifact code. Fulfill the active user request above by updating the existing artifact in-place and emitting the complete updated \`<artifact type="text/html">...</artifact>\` block.\n\n${body}`,
+        `## Conversation history & prior artifacts\n${directive}\n\n${body}`,
       ].join('\n\n');
     }
     return body;
@@ -12699,6 +12717,31 @@ export async function startServer({
       def.id === 'antigravity'
         ? path.join(os.tmpdir(), `od-agy-${run.id}.log`)
         : undefined;
+    const syncCapturedAntigravitySession = () => {
+      if (!capturedSessionId && def.id === 'antigravity' && agentLogFilePath) {
+        try {
+          if (fs.existsSync(agentLogFilePath)) {
+            const logContent = fs.readFileSync(agentLogFilePath, 'utf8');
+            const match =
+              logContent.match(/Created conversation ([0-9a-f-]{36})/i) ||
+              logContent.match(/conversation=([0-9a-f-]{36})/i) ||
+              logContent.match(/conversation[ =]([0-9a-f-]{36})/i);
+            if (match?.[1]) {
+              capturedSessionId = match[1];
+              run.nativeSessionRecovery = markNativeSessionCaptured({
+                previous: run.nativeSessionRecovery,
+                agentId: def.id,
+                sessionId: capturedSessionId,
+                resumed: agentResumeCtx.isResuming,
+              });
+              publishNativeSessionRecoveryMetadata();
+            }
+          }
+        } catch {
+          // Ignore read errors
+        }
+      }
+    };
     const promptFile = await preparePromptFileForAgent(def, composed, run.id);
     const cleanupPromptFile = () => {
       if (promptFile) promptFile.cleanup().catch(() => {});
@@ -12952,6 +12995,7 @@ export async function startServer({
           );
           return;
         }
+        syncCapturedAntigravitySession();
         // The id to persist for a create turn: capture-style adapters store the
         // session id the CLI minted and reported on the stream; specify-style
         // adapters store the daemon-minted id they passed to the CLI. A
@@ -15953,6 +15997,7 @@ export async function startServer({
         // /tmp doesn't accumulate one file per Antigravity run. The log
         // is read inside the empty-output guard above before this finally
         // runs, so the read always happens before the unlink.
+        syncCapturedAntigravitySession();
         if (agentLogFilePath) {
           fs.promises.unlink(agentLogFilePath).catch(() => {});
         }

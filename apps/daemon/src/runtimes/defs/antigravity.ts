@@ -199,22 +199,12 @@ export const antigravityAgentDef = {
     { id: 'GPT-OSS 120B (Medium)', label: 'GPT-OSS 120B (Medium)' },
   ],
   supportsCustomModel: false,
-  // We deliberately do NOT opt into `resumesSessionViaCli` / agy's `-c`
-  // resume flag on follow-up turns. Tested both shapes; `-c` activates
-  // agy's internal agentic loop (multi-step model retries, tool calls,
-  // fallback-to-cached-response on tool errors) which can't be steered
-  // from OD's system-prompt OVERRIDE — even with the strongest wording
-  // we got an identical byte-for-byte form re-emission on turn 2 when
-  // turn 1's tool-call retry path returned the cached form response.
-  //
-  // Instead we treat agy as a stateless plain adapter like qwen /
-  // deepseek: every spawn gets the full OD-rendered transcript via
-  // `buildDaemonTranscript`, and that transcript's prior assistant
-  // turns are sanitized to strip `<question-form>` markup + form-schema
-  // JSON fences (see `sanitizePriorAssistantTurnForTranscript` in
-  // apps/web/src/providers/daemon.ts). The stronger OVERRIDE block
-  // composed in server.ts gives a second line of defense for weak
-  // plain-stream models like Gemini 3.5 Flash.
+  // Continue Antigravity's own CLI session across turns so it keeps its
+  // working memory (files read, edits made, bash execution, conversation context)
+  // instead of re-deriving everything from a flattened 2000+ line transcript.
+  // On Turn 1, agy mints a conversation UUID logged in `--log-file`. The daemon
+  // captures this UUID and on follow-up turns passes `--conversation <id>` with
+  // `skipTranscript: true`, omitting redundant system instructions and raw HTML bloat.
   buildArgs: (
     _prompt,
     _imagePaths,
@@ -240,11 +230,16 @@ export const antigravityAgentDef = {
     if (agentCapabilities.get('antigravity')?.skipPermissions) {
       args.push(ANTIGRAVITY_SKIP_PERMISSIONS_FLAG);
     }
+    if (runtimeContext.resumeSessionId) {
+      args.push('--conversation', runtimeContext.resumeSessionId);
+    }
     args.push('--input-format', 'text');
     return args;
   },
   promptViaStdin: true,
   streamFormat: 'plain',
+  resumesSessionViaCli: true,
+  capturesSessionIdFromStream: true,
   installUrl: 'https://antigravity.google/cli',
   docsUrl: 'https://antigravity.google/docs/cli-overview',
 } satisfies RuntimeAgentDef;
