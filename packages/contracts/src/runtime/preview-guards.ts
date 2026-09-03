@@ -39,12 +39,14 @@ export function buildPreviewSandboxShim(): string {
     return api;
   }
   function tryShim(name){
-    var works = false;
-    try { works = !!window[name] && typeof window[name].getItem === 'function'; void window[name].length; }
-    catch (_) { works = false; }
-    if (works) return;
-    try { Object.defineProperty(window, name, { configurable: true, value: makeStore() }); }
-    catch (_) { try { window[name] = makeStore(); } catch (__) {} }
+    try {
+      if (window[name] && typeof window[name].getItem === 'function') return;
+    } catch (_) {}
+    try {
+      Object.defineProperty(window, name, { configurable: true, value: makeStore() });
+    } catch (_) {
+      try { window[name] = makeStore(); } catch (__) {}
+    }
   }
   tryShim('localStorage');
   tryShim('sessionStorage');
@@ -54,13 +56,29 @@ export function buildPreviewSandboxShim(): string {
       var original = h && h[name];
       if (typeof original !== 'function') return;
       h[name] = function(state, title, url){
-        try { return original.call(h, state, title, url); }
-        catch (_) { return undefined; }
+        try {
+          return original.call(h, state, title, url);
+        } catch (_) {
+          return undefined;
+        }
       };
     } catch (_) {}
   }
   shimHistoryMethod('pushState');
   shimHistoryMethod('replaceState');
+  function isHtml(name){
+    if (!name || typeof name !== 'string') return false;
+    var lower = name.toLowerCase();
+    return lower.endsWith('.html') || lower.endsWith('.htm');
+  }
+  function isSafeRelative(name){
+    if (!name || name.charAt(0) === '/') return false;
+    var parts = name.split('/');
+    for (var i = 0; i < parts.length; i++){
+      if (!parts[i] || parts[i] === '.' || parts[i] === '..') return false;
+    }
+    return true;
+  }
   document.addEventListener('click', function(e){
     if (!e.target || !(e.target instanceof Element)) return;
     var link = e.target.closest('a[href]');
@@ -72,14 +90,16 @@ export function buildPreviewSandboxShim(): string {
       e.preventDefault();
       if (href === '' || href === '#') {
         window.scrollTo({ top: 0 });
-        history.replaceState(null, '', ' ');
+        try { history.replaceState(null, '', ' '); } catch (_) {}
       } else {
         var targetId = href.slice(1);
         var target = targetId ? document.getElementById(targetId) : null;
         if (target) {
           target.scrollIntoView();
-          if (location.hash === href) history.replaceState(null, '', ' ');
-          location.hash = href;
+          try {
+            if (location.hash === href) history.replaceState(null, '', ' ');
+            location.hash = href;
+          } catch (_) {}
         }
       }
     } else if (link.getAttribute('target') === '_blank') {
@@ -90,8 +110,68 @@ export function buildPreviewSandboxShim(): string {
         safe = parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:' || parsedUrl.protocol === 'mailto:';
       } catch (_) {}
       if (safe) window.open(href, '_blank', 'noopener,noreferrer');
+    } else {
+      var fileName = null;
+      try {
+        var baseUrl = new URL(document.baseURI || location.href);
+        var nextUrl = new URL(href, baseUrl);
+        if (nextUrl.origin === baseUrl.origin) {
+          var projectMarker = '/api/projects/';
+          var projectIndex = baseUrl.pathname.indexOf(projectMarker);
+          if (projectIndex >= 0) {
+            var projectIdStart = projectIndex + projectMarker.length;
+            var routeMarkerStart = baseUrl.pathname.indexOf('/', projectIdStart);
+            if (routeMarkerStart > projectIdStart) {
+              var rawMarker = '/raw/';
+              var fileRoot = null;
+              if (baseUrl.pathname.slice(routeMarkerStart, routeMarkerStart + rawMarker.length) === rawMarker) {
+                fileRoot = baseUrl.pathname.slice(0, routeMarkerStart + rawMarker.length);
+              } else {
+                var previewMarker = '/preview/';
+                if (baseUrl.pathname.slice(routeMarkerStart, routeMarkerStart + previewMarker.length) === previewMarker) {
+                  var scopeStart = routeMarkerStart + previewMarker.length;
+                  var scopeEnd = baseUrl.pathname.indexOf('/', scopeStart);
+                  if (scopeEnd > scopeStart) {
+                    fileRoot = baseUrl.pathname.slice(0, scopeEnd + 1);
+                  }
+                }
+              }
+              if (fileRoot && nextUrl.pathname.indexOf(fileRoot) === 0) {
+                var candidate = decodeURIComponent(nextUrl.pathname.slice(fileRoot.length));
+                if (isSafeRelative(candidate) && isHtml(candidate)) {
+                  fileName = candidate;
+                }
+              }
+            }
+          }
+        }
+      } catch (_) {}
+      if (!fileName) {
+        var cleanHref = (href || '').split('?')[0].split('#')[0];
+        if (cleanHref.indexOf('./') === 0) cleanHref = cleanHref.slice(2);
+        if (cleanHref.indexOf('/') === 0) cleanHref = cleanHref.slice(1);
+        if (
+          isHtml(cleanHref) &&
+          isSafeRelative(cleanHref) &&
+          !cleanHref.startsWith('http://') &&
+          !cleanHref.startsWith('https://') &&
+          !cleanHref.startsWith('//') &&
+          !cleanHref.startsWith('mailto:') &&
+          !cleanHref.startsWith('tel:') &&
+          !cleanHref.startsWith('javascript:')
+        ) {
+          fileName = cleanHref;
+        }
+      }
+      if (fileName) {
+        e.preventDefault();
+        window.parent.postMessage({
+          type: 'od:preview-open-file',
+          fileName: fileName,
+        }, '*');
+      }
     }
-  });
+  }, true);
 })();</script>`;
 }
 

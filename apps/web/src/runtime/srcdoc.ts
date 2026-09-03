@@ -657,14 +657,23 @@ function injectSnapshotBridge(doc: string): string {
     'margin','margin-top','margin-right','margin-bottom','margin-left',
     'padding','padding-top','padding-right','padding-bottom','padding-left',
     'border','border-top','border-right','border-bottom','border-left','border-radius',
+    'border-color','border-width','border-style',
+    'border-top-color','border-top-width','border-top-style',
+    'border-right-color','border-right-width','border-right-style',
+    'border-bottom-color','border-bottom-width','border-bottom-style',
+    'border-left-color','border-left-width','border-left-style',
+    'border-top-left-radius','border-top-right-radius','border-bottom-left-radius','border-bottom-right-radius',
     'font','font-family','font-size','font-weight','font-style','line-height','letter-spacing',
-    'color','background-color','opacity','transform','transform-origin','overflow','overflow-x','overflow-y',
+    'color','background','background-color','background-image','background-size','background-position','background-repeat','background-clip','background-origin',
+    'opacity','transform','transform-origin','overflow','overflow-x','overflow-y',
     'white-space','text-align','vertical-align','object-fit','object-position',
     'flex','flex-direction','flex-wrap','flex-grow','flex-shrink','flex-basis',
     'grid','grid-template-columns','grid-template-rows','grid-column','grid-row',
     'gap','row-gap','column-gap','align-items','align-content','align-self',
     'justify-items','justify-content','justify-self','inset','top','right','bottom','left',
-    'z-index','box-shadow','text-shadow'
+    'z-index','box-shadow','text-shadow','outline','outline-color','outline-style','outline-width',
+    'fill','stroke','stroke-width','stroke-linecap','stroke-linejoin','stroke-dasharray','stroke-dashoffset','stroke-opacity','fill-opacity',
+    'filter','backdrop-filter','clip-path','visibility','cursor'
   ];
   function copyComputedStyle(source, target){
     if (!source || !target || source.nodeType !== 1 || target.nodeType !== 1) return;
@@ -709,6 +718,27 @@ function injectSnapshotBridge(doc: string): string {
       styles[st].textContent = (styles[st].textContent || '')
         .replace(/@import[^;]+;/gi, '')
         .replace(/@font-face\\s*\\{[^}]*\\}/gi, '');
+    }
+    var images = cloneRoot.querySelectorAll('img');
+    for (var im = 0; im < images.length; im++) {
+      try {
+        var src = images[im].getAttribute('src') || '';
+        if (src && !src.startsWith('data:')) {
+          var origImg = originalRoot.querySelector('img[src="' + CSS.escape(src) + '"]');
+          if (origImg && origImg.complete && origImg.naturalWidth > 0) {
+            var hCanvas = document.createElement('canvas');
+            hCanvas.width = origImg.naturalWidth;
+            hCanvas.height = origImg.naturalHeight;
+            var hCtx = hCanvas.getContext('2d');
+            if (hCtx) {
+              hCtx.drawImage(origImg, 0, 0);
+              images[im].setAttribute('src', hCanvas.toDataURL('image/png'));
+            }
+          }
+        }
+      } catch (_) {
+        images[im].removeAttribute('src');
+      }
     }
   }
   function pruneHiddenSnapshotNodes(originalRoot, cloneRoot){
@@ -766,13 +796,29 @@ function injectSnapshotBridge(doc: string): string {
   function canvasLooksBlank(ctx, cw, ch){
     try {
       var data = ctx.getImageData(0, 0, cw, ch).data;
-      var step = Math.max(4, Math.floor((cw * ch) / 4096)) * 4;
-      var first = null, samples = 0;
+      var totalPixels = cw * ch;
+      var step = Math.max(1, Math.floor(totalPixels / 8192)) * 4;
+      var first = null, samples = 0, diffFound = false;
       for (var i = 0; i + 3 < data.length; i += step){
         samples++;
         if (!first){ first = [data[i], data[i+1], data[i+2], data[i+3]]; continue; }
-        if (Math.abs(data[i]-first[0]) > 6 || Math.abs(data[i+1]-first[1]) > 6 ||
-            Math.abs(data[i+2]-first[2]) > 6 || Math.abs(data[i+3]-first[3]) > 6) return false;
+        if (Math.abs(data[i]-first[0]) > 4 || Math.abs(data[i+1]-first[1]) > 4 ||
+            Math.abs(data[i+2]-first[2]) > 4 || Math.abs(data[i+3]-first[3]) > 4) {
+          diffFound = true;
+          break;
+        }
+      }
+      if (diffFound) return false;
+      var cx = Math.floor(cw / 2), cy = Math.floor(ch / 2);
+      var halfW = Math.min(250, Math.floor(cw / 3)), halfH = Math.min(250, Math.floor(ch / 3));
+      if (halfW > 0 && halfH > 0) {
+        var centerData = ctx.getImageData(Math.max(0, cx - halfW), Math.max(0, cy - halfH), Math.min(cw, halfW * 2), Math.min(ch, halfH * 2)).data;
+        for (var c = 0; c + 3 < centerData.length; c += 16) {
+          if (first && (Math.abs(centerData[c]-first[0]) > 4 || Math.abs(centerData[c+1]-first[1]) > 4 ||
+              Math.abs(centerData[c+2]-first[2]) > 4 || Math.abs(centerData[c+3]-first[3]) > 4)) {
+            return false;
+          }
+        }
       }
       return samples > 8;
     } catch (_) { return false; }
@@ -802,14 +848,25 @@ function injectSnapshotBridge(doc: string): string {
       var cloneBody = clone.querySelector('body');
       var rootStyle = clone.getAttribute('style') || '';
       var bodyStyle = cloneBody ? cloneBody.getAttribute('style') || '' : '';
-      var bodyContent = cloneBody ? cloneBody.innerHTML : clone.innerHTML;
       var wrapperStyle = rootStyle + bodyStyle +
         'margin:0;position:relative;left:' + (-scroll.x) + 'px;top:' + (-scroll.y) + 'px;' +
         'width:' + docW + 'px;height:' + docH + 'px;overflow:visible;';
-      var html = '<div xmlns="http://www.w3.org/1999/xhtml" style="' + escapeAttribute(wrapperStyle) + '">' + bodyContent + '</div>';
+      var wrapper = document.createElement('div');
+      wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+      wrapper.setAttribute('style', wrapperStyle);
+      var container = cloneBody || clone;
+      while (container.firstChild) {
+        wrapper.appendChild(container.firstChild);
+      }
+      var serializedHtml = '';
+      try {
+        serializedHtml = new XMLSerializer().serializeToString(wrapper);
+      } catch (_) {
+        serializedHtml = '<div xmlns="http://www.w3.org/1999/xhtml" style="' + escapeAttribute(wrapperStyle) + '">' + (container.innerHTML || '') + '</div>';
+      }
       var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + capW + '" height="' + capH + '" viewBox="0 0 ' + capW + ' ' + capH + '">' +
         '<foreignObject x="0" y="0" width="' + docW + '" height="' + docH + '">' +
-        html +
+        serializedHtml +
         '</foreignObject></svg>';
       var img = new Image();
       img.onload = function(){
@@ -1553,40 +1610,112 @@ function injectSandboxShim(doc: string): string {
   }
   shimHistoryMethod('pushState');
   shimHistoryMethod('replaceState');
-  document.addEventListener('click', (e) => {
+  function isHtml(name){
+    if (!name || typeof name !== 'string') return false;
+    var lower = name.toLowerCase();
+    return lower.endsWith('.html') || lower.endsWith('.htm');
+  }
+  function isSafeRelative(name){
+    if (!name || name.charAt(0) === '/') return false;
+    var parts = name.split('/');
+    for (var i = 0; i < parts.length; i++){
+      if (!parts[i] || parts[i] === '.' || parts[i] === '..') return false;
+    }
+    return true;
+  }
+  document.addEventListener('click', function(e){
     if (!e.target || !(e.target instanceof Element)) return;
     var link = e.target.closest('a[href]');
     if (!link) return;
     var href = link.getAttribute('href');
     if (href === null) return;
-    var isAnchor = href.startsWith('#') || href === '';
+    var isAnchor = href.indexOf('#') === 0 || href === '';
     if (isAnchor) {
       e.preventDefault();
       if (href === '' || href === '#') {
         window.scrollTo({ top: 0 });
-        history.replaceState(null, '', ' ');
+        try { history.replaceState(null, '', ' '); } catch (_) {}
       } else {
         var targetId = href.slice(1);
         var target = targetId ? document.getElementById(targetId) : null;
         if (target) {
           target.scrollIntoView();
-          location.hash === href && history.replaceState(null, '', ' ');
-          location.hash = href;
+          try {
+            if (location.hash === href) history.replaceState(null, '', ' ');
+            location.hash = href;
+          } catch (_) {}
         }
       }
     } else if (link.getAttribute('target') === '_blank') {
       e.preventDefault();
-      let safe = false;
+      var safe = false;
       try {
-        var url = new URL(href, location.href);
-        safe =
-          url.protocol === 'http:' ||
-          url.protocol === 'https:' ||
-          url.protocol === 'mailto:';
+        var parsedUrl = new URL(href, location.href);
+        safe = parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:' || parsedUrl.protocol === 'mailto:';
       } catch (_) {}
-      safe && window.open(href, '_blank', 'noopener,noreferrer');
+      if (safe) window.open(href, '_blank', 'noopener,noreferrer');
+    } else {
+      var fileName = null;
+      try {
+        var baseUrl = new URL(document.baseURI || location.href);
+        var nextUrl = new URL(href, baseUrl);
+        if (nextUrl.origin === baseUrl.origin) {
+          var projectMarker = '/api/projects/';
+          var projectIndex = baseUrl.pathname.indexOf(projectMarker);
+          if (projectIndex >= 0) {
+            var projectIdStart = projectIndex + projectMarker.length;
+            var routeMarkerStart = baseUrl.pathname.indexOf('/', projectIdStart);
+            if (routeMarkerStart > projectIdStart) {
+              var rawMarker = '/raw/';
+              var fileRoot = null;
+              if (baseUrl.pathname.slice(routeMarkerStart, routeMarkerStart + rawMarker.length) === rawMarker) {
+                fileRoot = baseUrl.pathname.slice(0, routeMarkerStart + rawMarker.length);
+              } else {
+                var previewMarker = '/preview/';
+                if (baseUrl.pathname.slice(routeMarkerStart, routeMarkerStart + previewMarker.length) === previewMarker) {
+                  var scopeStart = routeMarkerStart + previewMarker.length;
+                  var scopeEnd = baseUrl.pathname.indexOf('/', scopeStart);
+                  if (scopeEnd > scopeStart) {
+                    fileRoot = baseUrl.pathname.slice(0, scopeEnd + 1);
+                  }
+                }
+              }
+              if (fileRoot && nextUrl.pathname.indexOf(fileRoot) === 0) {
+                var candidate = decodeURIComponent(nextUrl.pathname.slice(fileRoot.length));
+                if (isSafeRelative(candidate) && isHtml(candidate)) {
+                  fileName = candidate;
+                }
+              }
+            }
+          }
+        }
+      } catch (_) {}
+      if (!fileName) {
+        var cleanHref = (href || '').split('?')[0].split('#')[0];
+        if (cleanHref.indexOf('./') === 0) cleanHref = cleanHref.slice(2);
+        if (cleanHref.indexOf('/') === 0) cleanHref = cleanHref.slice(1);
+        if (
+          isHtml(cleanHref) &&
+          isSafeRelative(cleanHref) &&
+          !cleanHref.startsWith('http://') &&
+          !cleanHref.startsWith('https://') &&
+          !cleanHref.startsWith('//') &&
+          !cleanHref.startsWith('mailto:') &&
+          !cleanHref.startsWith('tel:') &&
+          !cleanHref.startsWith('javascript:')
+        ) {
+          fileName = cleanHref;
+        }
+      }
+      if (fileName) {
+        e.preventDefault();
+        window.parent.postMessage({
+          type: 'od:preview-open-file',
+          fileName: fileName,
+        }, '*');
+      }
     }
-  });
+  }, true);
 })();</script>`;
   return injectAtDocumentStart(doc, shim);
 }

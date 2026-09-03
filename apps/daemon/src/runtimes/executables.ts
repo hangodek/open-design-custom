@@ -1,4 +1,4 @@
-import { accessSync, constants, existsSync, statSync } from 'node:fs';
+import { accessSync, constants, existsSync, readdirSync, statSync } from 'node:fs';
 import { delimiter } from 'node:path';
 import path from 'node:path';
 import { homedir } from 'node:os';
@@ -201,6 +201,49 @@ function configuredExecutableOverride(
   return executableFilePath(configuredEnv?.[envKey] ?? process.env[envKey]);
 }
 
+export function workspaceVelaCliExecutable(): string | null {
+  const platform = process.platform;
+  const arch = process.arch;
+  const pkgName = `@powerformer/vela-cli-${platform}-${arch}`;
+  const binName = platform === 'win32' ? 'vela.exe' : 'vela';
+
+  const candidateRoots = [
+    RUNTIME_PROJECT_ROOT,
+    path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..'),
+  ];
+
+  for (const root of candidateRoots) {
+    const directCandidate = path.join(root, 'node_modules', ...pkgName.split('/'), 'bin', binName);
+    const direct = executableFilePath(directCandidate);
+    if (direct) return direct;
+
+    const pnpmDir = path.join(root, 'node_modules', '.pnpm');
+    if (existsSync(pnpmDir)) {
+      try {
+        const entries = readdirSync(pnpmDir);
+        const prefix = `@powerformer+vela-cli-${platform}-${arch}@`;
+        const matched = entries.find((e) => e.startsWith(prefix));
+        if (matched) {
+          const pnpmCandidate = path.join(
+            pnpmDir,
+            matched,
+            'node_modules',
+            ...pkgName.split('/'),
+            'bin',
+            binName,
+          );
+          const resolved = executableFilePath(pnpmCandidate);
+          if (resolved) return resolved;
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  return null;
+}
+
 export function resolveAmrOpenCodeExecutable(
   env: Record<string, string | undefined> = process.env,
 ): string | null {
@@ -211,7 +254,7 @@ export function resolveAmrOpenCodeExecutable(
   // looking at the host PATH. Otherwise a Settings/VELA_BIN override can run
   // against an unrelated wrapper or incompatible global OpenCode even though
   // the selected Vela package already contains its known-good runtime.
-  const selectedVela = executableFilePath(env.VELA_BIN);
+  const selectedVela = executableFilePath(env.VELA_BIN) || workspaceVelaCliExecutable();
   if (selectedVela) {
     const selectedCompanion = executableFilePath(
       path.join(
@@ -280,29 +323,38 @@ function packagedBuiltInExecutable(
   }
   if (def.id !== 'amr') return null;
   const resourceRoot = process.env.OD_RESOURCE_ROOT?.trim();
-  if (!resourceRoot) return null;
-  if (
-    !resolveAmrOpenCodeExecutable({ ...process.env, ...configuredEnv }) &&
-    !packagedVelaOpenCodeCompanionTree(resourceRoot)
-  ) {
-    return null;
-  }
-  const candidate = path.join(
-    resourceRoot,
-    'bin',
-    process.platform === 'win32' ? 'vela.exe' : 'vela',
-  );
-  try {
-    if (!statSync(candidate).isFile()) return null;
-    if (process.platform === 'win32') {
-      if (!looksExecutableOnWindows(candidate)) return null;
-    } else {
-      accessSync(candidate, constants.X_OK);
+  if (resourceRoot) {
+    if (
+      !resolveAmrOpenCodeExecutable({ ...process.env, ...configuredEnv }) &&
+      !packagedVelaOpenCodeCompanionTree(resourceRoot)
+    ) {
+      return null;
     }
-    return candidate;
-  } catch {
-    return null;
+    const candidate = path.join(
+      resourceRoot,
+      'bin',
+      process.platform === 'win32' ? 'vela.exe' : 'vela',
+    );
+    try {
+      if (!statSync(candidate).isFile()) return null;
+      if (process.platform === 'win32') {
+        if (!looksExecutableOnWindows(candidate)) return null;
+      } else {
+        accessSync(candidate, constants.X_OK);
+      }
+      return candidate;
+    } catch {
+      return null;
+    }
   }
+
+  // Source / development mode fallback: automatically resolve bundled workspace binary
+  const workspaceVela = workspaceVelaCliExecutable();
+  if (workspaceVela) {
+    return workspaceVela;
+  }
+
+  return null;
 }
 
 // The official OpenAI Codex desktop app (bundle id `com.openai.codex`) ships

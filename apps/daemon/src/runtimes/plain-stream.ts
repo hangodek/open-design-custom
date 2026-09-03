@@ -158,11 +158,32 @@ export async function persistPlainStreamArtifactList(options: {
   const existingFiles = await listFiles(options.projectsRoot, options.projectId, {
     metadata: options.metadata,
   });
-  const reservedNames = new Set(existingFiles.map((file) => file.name));
+  const existingHtmlFiles = existingFiles.filter((file) => file.name.endsWith('.html'));
+  const configuredEntry =
+    typeof (options.metadata as Record<string, unknown> | undefined)?.entryFile === 'string'
+      ? ((options.metadata as Record<string, unknown>).entryFile as string)
+      : null;
+
+  const usedNamesInRun = new Set<string>();
   const persisted: PersistedPlainStreamArtifact[] = [];
 
   for (const artifact of artifacts) {
-    const name = reserveUniqueArtifactFileName(artifact.fileName, reservedNames);
+    let name = artifact.fileName;
+
+    // In-place revision preservation vs. new page creation:
+    // If the emitted HTML artifact matches an existing file (by identifier or name), update that file in-place.
+    // If the emitted artifact is a different page (e.g. "landing-page.html" vs "login.html"), save as a new file.
+    const matchingFile = existingHtmlFiles.find((f) => matchesExistingHtmlFile(artifact, f));
+    if (matchingFile) {
+      name = matchingFile.name;
+    } else if (configuredEntry && artifact.fileName === configuredEntry) {
+      name = configuredEntry;
+    } else if (usedNamesInRun.has(name)) {
+      // Intra-run collision only:
+      name = reserveUniqueArtifactFileName(name, usedNamesInRun);
+    }
+
+    usedNamesInRun.add(name);
     const manifest = artifactManifestFor(artifact, name);
     const file = await createProjectArtifactFile({
       projectsRoot: options.projectsRoot,
@@ -173,6 +194,7 @@ export async function persistPlainStreamArtifactList(options: {
         artifactManifest: manifest,
       },
       metadata: options.metadata,
+      overwrite: true,
       writeProjectFile,
     });
     persisted.push({
@@ -185,6 +207,21 @@ export async function persistPlainStreamArtifactList(options: {
   }
 
   return persisted;
+}
+
+function matchesExistingHtmlFile(artifact: PlainStreamArtifact, file: ProjectFile): boolean {
+  if (artifact.fileName.toLowerCase() === file.name.toLowerCase()) return true;
+  const existingIdentifier = file.artifactManifest?.metadata?.identifier;
+  if (typeof existingIdentifier === 'string' && existingIdentifier) {
+    if (artifact.identifier.toLowerCase() === existingIdentifier.toLowerCase()) return true;
+    const cleanArtifactId = artifact.identifier.replace(/-v?\d+$/, '').toLowerCase();
+    const cleanExistingId = existingIdentifier.replace(/-v?\d+$/, '').toLowerCase();
+    if (cleanArtifactId && cleanExistingId && cleanArtifactId === cleanExistingId) return true;
+  }
+  const artifactBase = artifact.fileName.replace(/\.html$/i, '').replace(/-v?\d+$/, '').toLowerCase();
+  const fileBase = file.name.replace(/\.html$/i, '').replace(/-v?\d+$/, '').toLowerCase();
+  if (artifactBase && fileBase && artifactBase === fileBase) return true;
+  return false;
 }
 
 function normalizeArtifactType(rawType: string | undefined, content: string): string | null {

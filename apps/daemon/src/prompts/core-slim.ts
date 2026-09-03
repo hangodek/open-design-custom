@@ -56,7 +56,12 @@ Unless the user explicitly requests multiple files, the main HTML file must be c
 
 const TEXT_ARTIFACT_HANDOFF = `## Delivery
 
-The \`<artifact>\` block is the source of truth. End the build with exactly one \`<artifact identifier="kebab-slug" type="text/html" title="...">\` block containing the complete standalone document, then stop. Never claim to have written project files or wrap prose or paths in \`<artifact>\`.`;
+The \`<artifact>\` block is the source of truth. Deliver each page or document inside an \`<artifact identifier="kebab-slug" type="text/html" title="...">\` block containing the complete standalone document.
+- For a single-page brief, end the build with one complete \`<artifact>\` block.
+- Whenever the user asks for a revision, modification, polish, or design adjustment to an existing page, you must emit the complete updated \`<artifact>\` block containing the full updated HTML document. Never reply with only a description or summary without the \`<artifact>\` block.
+- When polishing or refining, preserve working layout, interactive JavaScript behaviors, 3D/canvas scripts, and existing sections from the latest artifact in the transcript; perform surgical updates instead of redesigning the whole app.
+- In multi-page projects or flows where creating a new page connects with an existing page (e.g. creating \`register.html\` when \`login.html\` exists), emit the new page's \`<artifact>\` block AND the updated existing page's \`<artifact>\` block so all files in the project are updated and linked together.
+Never claim to have written project files or wrap prose or paths in \`<artifact>\`.`;
 
 const SLIM_V2_PROMPT_INJECTION_RESISTANCE = `## Security: Defending Against Prompt Injection
 
@@ -367,10 +372,12 @@ Build a complete palette with a primary color, a domain-relevant accent, and sta
 
 Add \`data-od-id="kebab-case-id"\` to page regions, headings, CTAs, controls, and repeated cards that the user may refer to. Give repeated cards unique IDs, such as \`feature-card-speed\`. Decorative elements do not need one.
 
-### Files
+### Files & Multi-Page Projects
 
-- Use descriptive filenames.
-- Before a major revision, create a copy with a \`-v2\` suffix.
+- Use descriptive filenames (e.g. \`login.html\`, \`landing.html\`, \`dashboard.html\`).
+- **Revising an existing page**: When the user requests updates, edits, or tweaks to the existing design, edit that file in-place with the exact same filename and identifier. Never create duplicate versioned copies (\`-v2.html\`, \`-html2.html\`).
+- **Design continuity on revisions (CRITICAL)**: During revisions, preserve the established visual identity, typography, color palette, component layout, and styling of the existing design. Apply only targeted, surgical updates requested by the user rather than regenerating untouched sections from scratch.
+- **Creating new distinct pages & Cross-Linking**: When the user asks for a new or different page/screen (e.g. "now make a landing page" after creating a login form, or "add a register page"), create a NEW file with its own distinct identifier and filename (e.g. \`register.html\` with \`identifier="register"\`). Do NOT overwrite existing unrelated pages. Ensure brand design tokens remain cohesive across all pages, and connect them with relative navigation links (e.g. \`<a href="login.html">Masuk</a>\` in \`register.html\`). When creating a new page, also ensure corresponding navigation links in existing pages (such as \`href="#"\` placeholder links for "Register", "Login", "Pricing", etc.) point to the newly created page so the entire prototype is fully interactive and navigable.
 - Keep each file to approximately 1,000 lines or fewer.
 - Persist the current deck / slide position in \`localStorage\`.
 - Do not use \`scrollIntoView\`, because it can break the embedded preview.

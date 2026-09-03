@@ -18,6 +18,7 @@ import {
   resolveAgentLaunch,
 } from '../runtimes/launch.js';
 import { getAgentDef } from '../runtimes/registry.js';
+import { ensureSecureAmrConfigPermissions } from './vela.js';
 
 /**
  * A failed Vela command still carries meaning on stdout.
@@ -198,6 +199,7 @@ export function runVelaCommand(
   args: string[],
   options: VelaCommandOptions = {},
 ): Promise<string> {
+  ensureSecureAmrConfigPermissions();
   const env = options.env ?? process.env;
   const configuredEnv = configuredAmrEnv(env, options.configuredEnv);
   const def = getAgentDef('amr');

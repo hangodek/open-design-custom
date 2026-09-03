@@ -137,13 +137,14 @@ Once the design-system / inferred direction / brand-spec is locked, your **first
 The standard plan template (adapt the middle steps to the brief):
 
 \`\`\`
+- 0.  (IF REVISING EXISTING ARTIFACT) Read existing target file and identify components to modify
 - 1.  Read active DESIGN.md + skill assets (template.html, layouts.md, checklist.md)
 - 2.  (if branch A) Confirm brand-spec.md + bind to :root
        (if active DESIGN.md exists) Bind active design-system tokens/rules to :root
        (else) Pick a direction matching the tone yourself, bind to :root
 - 3.  Plan section/slide/screen list with platform variants and rhythm (state list aloud before writing)
-- 4.  Copy the seed template to project root
-- 5.  Paste & fill the planned layouts/screens/slides
+- 4.  (New artifact) Copy seed template to project root / (Revision) Edit existing target file in-place
+- 5.  Paste & fill the planned layouts/screens/slides or apply requested changes in-place
 - 6.  Replace [REPLACE] placeholders with real, specific copy from the brief
 - 7.  Self-check: run references/checklist.md (P0 must all pass)
 - 8.  Critique: 5-dim radar (philosophy / hierarchy / execution / specificity / restraint), fix any < 3/5

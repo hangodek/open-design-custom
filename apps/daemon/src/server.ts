@@ -2077,7 +2077,20 @@ export function composeChatUserRequestForAgent(
       ? bodySource
       : '(No extra typed instruction.)';
   const transition = formAnswerTransitionForCurrentPrompt(currentPrompt);
-  if (!transition) return body;
+  if (!transition) {
+    if (
+      !skip &&
+      typeof currentPrompt === 'string' &&
+      currentPrompt.trim() &&
+      message.includes('## assistant')
+    ) {
+      return [
+        `## Active user request (execute this turn)\n${currentPrompt.trim()}`,
+        `## Conversation history & prior artifacts\nBelow is the conversation history and previous artifact code. Fulfill the active user request above by updating the existing artifact in-place and emitting the complete updated \`<artifact type="text/html">...</artifact>\` block.\n\n${body}`,
+      ].join('\n\n');
+    }
+    return body;
+  }
   if (skip) {
     // The transition block already embeds the trimmed `currentPrompt`
     // (the submitted form answers). On the resume path `body` IS

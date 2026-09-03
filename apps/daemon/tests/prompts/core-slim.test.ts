@@ -36,7 +36,8 @@ const repoRoot = path.resolve(__dirname, '../../../..');
 // geometry, provenance check) is load-bearing product behavior that could not
 // be delegated to the web-prototype skill, because it must hold for every
 // skill and for skill-less runs.
-const SLIM_CORE_BYTE_BUDGET = 29_696;
+// 29_696 → 32_000: in-place artifact revisions, multi-page cross linking rules.
+const SLIM_CORE_BYTE_BUDGET = 32_000;
 
 describe('renderSlimCoreCharter — byte budget', () => {
   it('stays under the byte budget in both execution profiles', () => {
@@ -388,11 +389,11 @@ describe('composeSystemPrompt — slim payload gates (metadata facts / memory / 
   it('renders the metadata block as a fact sheet under slim', () => {
     const slim = composeSystemPrompt(base);
     expect(slim).toContain('## Project metadata');
-    expect(slim).toContain('- **screen files**:');
+    expect(slim).toContain('- **in-place artifact rule**:');
     expect(slim).toContain('- **product depth**:');
     // Classic doctrine bullets stay out of the facts variant…
     for (const rule of [
-      'screen-file-first rule',
+      'in-place revisions vs. new page creation (CRITICAL)',
       'product-realism rule',
       'visual-system rule',
       'CJX-ready UX rule',
@@ -404,7 +405,7 @@ describe('composeSystemPrompt — slim payload gates (metadata facts / memory / 
     }
     // …and stay present in classic for the same inputs.
     const classic = composeSystemPrompt({ ...base, promptCoreVariant: undefined });
-    expect(classic).toContain('screen-file-first rule');
+    expect(classic).toContain('in-place revisions vs. new page creation (CRITICAL)');
     expect(classic).toContain('product-realism rule');
   });
 

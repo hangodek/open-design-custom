@@ -1721,6 +1721,7 @@ interface Props {
   onSendBoardCommentAttachments?: (attachments: ChatCommentAttachment[], images?: File[]) => Promise<CommentSendResult> | CommentSendResult;
   onFileSaved?: () => Promise<void> | void;
   onBrandExtractionStopRequest?: () => void;
+  onOpenFile?: (openName: string) => void;
   // Open `openName` as a tab (focusing it) and close `closeName` in one
   // atomic tab-state update. The React module pointer uses this to jump to the
   // HTML entry that renders a module and drop the dead-end module tab.
@@ -1816,6 +1817,7 @@ export const FileViewer = memo(function FileViewer({
   onSendBoardCommentAttachments,
   onFileSaved,
   onBrandExtractionStopRequest,
+  onOpenFile,
   onOpenFileReplacing,
   commentPortalId,
   onCommentModeChange,
@@ -1905,6 +1907,7 @@ export const FileViewer = memo(function FileViewer({
         onSendBoardCommentAttachments={onSendBoardCommentAttachments}
         onFileSaved={onFileSaved}
         onBrandExtractionStopRequest={onBrandExtractionStopRequest}
+        onOpenFile={onOpenFile}
         onOpenFileReplacing={onOpenFileReplacing}
         commentPortalId={commentPortalId}
         onCommentModeChange={onCommentModeChange}
@@ -7316,6 +7319,7 @@ function HtmlViewer({
   onSendBoardCommentAttachments,
   onFileSaved,
   onBrandExtractionStopRequest,
+  onOpenFile,
   onOpenFileReplacing,
   commentPortalId,
   onCommentModeChange,
@@ -7351,6 +7355,7 @@ function HtmlViewer({
   onSendBoardCommentAttachments?: (attachments: ChatCommentAttachment[], images?: File[]) => Promise<CommentSendResult> | CommentSendResult;
   onFileSaved?: () => Promise<void> | void;
   onBrandExtractionStopRequest?: () => void;
+  onOpenFile?: (openName: string) => void;
   onOpenFileReplacing?: (openName: string, closeName: string) => void;
   commentPortalId?: string;
   onCommentModeChange?: (active: boolean) => void;
@@ -8434,7 +8439,13 @@ function HtmlViewer({
   // the infinite-loop story (issue #2361).
   const srcDocFrameDedupeResetForRef = useRef<HTMLIFrameElement | null>(null);
   const isActivePreviewIframeSource = useCallback((source: MessageEventSource | null) => {
-    return workspaceActive && !!source && source === iframeRef.current?.contentWindow;
+    return (
+      workspaceActive &&
+      !!source &&
+      (source === iframeRef.current?.contentWindow ||
+        source === urlPreviewIframeRef.current?.contentWindow ||
+        source === srcDocPreviewIframeRef.current?.contentWindow)
+    );
   }, [workspaceActive]);
   const isOurPreviewIframeSource = useCallback((source: MessageEventSource | null) => {
     if (!workspaceActive || !source) return false;
@@ -10108,14 +10119,17 @@ function HtmlViewer({
   }, [routingHtmlSource, serverPoweredPreviewRequired]);
   const previewBridgeQuery = useMemo(() => {
     const query = [BASE_PREVIEW_BRIDGE_QUERY];
-    // Preserve the old URL-load behavior for ordinary passive documents. Only
-    // request a guard when the source heuristic says this artifact needs it;
-    // this avoids suppressing authored focus/navigation in unrelated pages.
-    if (needsSandboxShim && !needsPowered) query.push('odPreviewBridge=sandbox');
+    // Always include the sandbox bridge for URL-load HTML previews so that
+    // relative HTML link clicks dispatch od:preview-open-file to the host
+    // workspace rather than navigating the iframe directly. The shim is safe
+    // to inject even when the document doesn't use localStorage or external
+    // scripts (those shims are no-ops); withholding it for "simple" documents
+    // silently broke cross-page navigation tab highlighting.
+    if (!needsPowered) query.push('odPreviewBridge=sandbox');
     if (needsFocusGuard && !needsPowered) query.push('odPreviewBridge=focus');
     if (needsRedirectGuard && !needsPowered) query.push('odPreviewBridge=redirect');
     return query.join('&');
-  }, [needsFocusGuard, needsPowered, needsRedirectGuard, needsSandboxShim]);
+  }, [needsFocusGuard, needsPowered, needsRedirectGuard]);
   const [urlSelectionBridgeReady, setUrlSelectionBridgeReady] = useState(false);
   const urlLoadDecision: UrlLoadDecision = {
     mode,
@@ -12038,11 +12052,15 @@ function HtmlViewer({
       ) {
         return;
       }
-      onOpenFileReplacing?.(data.fileName, file.name);
+      if (onOpenFile) {
+        onOpenFile(data.fileName);
+      } else {
+        onOpenFileReplacing?.(data.fileName, file.name);
+      }
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [file.name, isActivePreviewIframeSource, onOpenFileReplacing, workspaceActive]);
+  }, [file.name, isActivePreviewIframeSource, onOpenFile, onOpenFileReplacing, workspaceActive]);
 
   useEffect(() => {
     if (!workspaceActive) return;
@@ -15219,7 +15237,7 @@ function HtmlViewer({
     // Returns real rendered pixels and is never tainted, unlike the in-iframe
     // SVG-foreignObject bridge. Used on pure web (no host) or if the render
     // above is unavailable. Works for both srcDoc and URL-load previews.
-    const visibleIframe = iframeRef.current ?? srcDocPreviewIframeRef.current;
+    const visibleIframe = iframeRef.current ?? srcDocPreviewIframeRef.current ?? urlPreviewIframeRef.current;
     const hostSnapshot = await captureHostIframeSnapshot(visibleIframe);
     if (hostSnapshot) return hostSnapshot;
 

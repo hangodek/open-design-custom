@@ -1482,8 +1482,12 @@ Do not mention tool unavailability to the user. Avoid phrases such as "TodoWrite
 
 **Allowed output:**
 - Plain chat prose to the user (in their language). State your plan as prose — a short numbered list in markdown is fine; it just must not be wrapped in \`<todo-list>\` or claim to be a tool call.
-- A final \`<artifact type="text/html">...</artifact>\` block containing a complete \`<!doctype html>\` document when the brief is ready to deliver.
+- The complete \`<artifact type="text/html">...</artifact>\` block(s) containing the standalone deliverable HTML documents when ready to deliver (emitting multiple artifact blocks when adding/updating connected pages in multi-page flows).
 - \`<question-form>\` blocks when material clarification is needed on any turn, exactly as the rules below describe — question-form is markup the UI parses, not a tool call.
+
+**Mandatory on all edits, polish, and revisions:**
+- **Emit full artifact**: Whenever the user asks for a revision, polish, modification, bugfix, style change, spacing/padding adjustment, or content edit to an existing file, you MUST ALWAYS emit the complete updated \`<artifact type="text/html">...</artifact>\` block containing the full updated HTML document. Never respond with only a prose explanation, summary, or partial diff without the \`<artifact>\` block.
+- **Preserve existing design & logic**: When asked to polish, refine, tweak, or adjust specific parts (e.g. "polish", "rapikan", "ubah warna", "perbaiki styling"), DO NOT rewrite the entire application from scratch or discard working sections, interactive JavaScript logic, canvas/3D animations, and layout structures. Base your changes directly on the latest artifact in the transcript and perform surgical, focused updates.
 
 If the rules below tell you to plan with TodoWrite, write the plan as prose instead. If they tell you to read skill side files before writing, describe in one sentence which patterns/conventions you're going to apply and proceed. If they tell you to run brand-spec extraction via Bash + Read + WebFetch, ask the user the missing brand questions in the discovery form instead.`;
 
@@ -1625,7 +1629,7 @@ function renderMetadataBlock(
   }
   if (factsOnly && (metadata.kind === 'prototype' || metadata.kind === 'template' || metadata.kind === 'other')) {
     lines.push(
-      '- **screen files**: each distinct user-facing screen ships as its own HTML file (`index.html` = launcher/overview when several exist) unless the user asks for a single page.',
+      '- **in-place artifact rule**: build and refine the active design artifact in-place. When revising, edit the existing file directly without creating numbered copies (`v2.html`, `-html2.html`).',
     );
     lines.push(
       '- **product depth**: build real product UI with the domain\'s in-app modules and working interactions (tabs, dialogs, filters, validation, playback) — not static screenshot mockups.',
@@ -1633,7 +1637,7 @@ function renderMetadataBlock(
   }
   if (!factsOnly && (metadata.kind === 'prototype' || metadata.kind === 'template' || metadata.kind === 'other')) {
     lines.push(
-      '- **screen-file-first rule**: each distinct user-facing screen or surface MUST be delivered as its own HTML file unless the user explicitly asks for a single-page scroll or single-file artifact. Do not combine landing pages, product app screens, dashboards, history, pricing, settings, mobile app, tablet app, desktop app, or OS widget surfaces into one long page. Use `index.html` as a launcher/overview that links to screen files when more than one screen exists; it may summarize the product and show screen cards, but it must not contain the full design for every screen.',
+      '- **in-place revisions vs. new page creation (CRITICAL)**: When modifying or revising an existing page, always edit the existing file directly in-place with the same filename/identifier (never create `login-v2.html`, `2.html`, etc.) and preserve design continuity (layout, typography, fonts, color tokens, CSS classes). When the user asks for a new distinct page/screen (e.g. creating a register or landing page after a login page), create a NEW file with its own appropriate identifier (e.g. `register.html`) without overwriting existing pages, maintain brand design consistency, and connect them with relative links bidirectionally (e.g. `<a href="login.html">` and updating existing pages\' `href="#"` links to `<a href="register.html">`) so navigation between screens works in both directions.',
     );
     lines.push(
       '- **product-realism rule**: final artifacts must look like real end-user product UI. Do not render project metadata, screen counts, target counts, state counts, "demo only" labels, "settings" panels for choosing platforms, "full design target" badges, viewport/device selector controls, theme/style knobs, platform output maps, behavior-spec sections, or design-process cards inside the product unless the user explicitly asks for a design spec/dashboard. Any navigation/tabs inside the artifact must be real product navigation, not designer controls for switching generated mockups.',

@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  compressArtifactBodyForTranscript,
+  compressArtifactsInTranscript,
   splitStreamingArtifact,
   stripArtifact,
   stripRecoveredHtmlFallbackForDisplay,
+  stripSupersededArtifacts,
   summarizeArtifactsForTranscript,
 } from '../../src/artifacts/strip';
 
@@ -15,6 +18,13 @@ describe('stripArtifact', () => {
       'Header.\n<artifact identifier="x" type="text/html" title="X">\n<h1>x</h1>\n</artifact>\nFooter.',
     );
     expect(out).toBe('Header.\n\nFooter.');
+  });
+
+  it('removes multiple real artifact tags and their bodies from prose', () => {
+    const out = stripArtifact(
+      'Header.\n<artifact identifier="register" type="text/html" title="Register">\n<h1>register</h1>\n</artifact>\nMiddle.\n<artifact identifier="login" type="text/html" title="Login">\n<h1>login</h1>\n</artifact>\nFooter.',
+    );
+    expect(out).toBe('Header.\n\nMiddle.\n\nFooter.');
   });
 
   it('preserves an artifact tag wrapped in inline backticks', () => {
@@ -259,3 +269,86 @@ describe('summarizeArtifactsForTranscript', () => {
     expect(out).not.toContain('# Brief');
   });
 });
+
+describe('stripSupersededArtifacts', () => {
+  it('preserves first-seen artifact and strips older superseded ones', () => {
+    const seen = new Set<string>();
+    const latest = '<artifact identifier="app" type="text/html" title="App"><h1>v2</h1></artifact>';
+    const older = '<artifact identifier="app" type="text/html" title="App"><h1>v1</h1></artifact>';
+
+    const latestProcessed = stripSupersededArtifacts(latest, seen);
+    expect(latestProcessed).toBe(latest);
+    expect(seen.has('app')).toBe(true);
+
+    const olderProcessed = stripSupersededArtifacts(older, seen);
+    expect(olderProcessed).toContain('[artifact "app" emitted on this prior turn is superseded by the newer version in a later turn.]');
+    expect(olderProcessed).not.toContain('<h1>v1</h1>');
+  });
+
+  it('preserves distinct artifacts across different identifiers', () => {
+    const seen = new Set<string>();
+    const page1 = '<artifact identifier="page1" type="text/html" title="Page 1"><h1>P1</h1></artifact>';
+    const page2 = '<artifact identifier="page2" type="text/html" title="Page 2"><h1>P2</h1></artifact>';
+
+    expect(stripSupersededArtifacts(page2, seen)).toBe(page2);
+    expect(stripSupersededArtifacts(page1, seen)).toBe(page1);
+  });
+});
+
+describe('compressArtifactBodyForTranscript', () => {
+  it('strips base64 data URIs from artifact body', () => {
+    const body = '<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" alt="test">';
+    const compressed = compressArtifactBodyForTranscript(body);
+    expect(compressed).toContain('[base64-data-omitted]');
+    expect(compressed).not.toContain('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ');
+  });
+
+  it('strips long SVG path data strings (>200 chars)', () => {
+    const longPath = 'M'.padEnd(250, '1');
+    const body = `<svg><path d="${longPath}"></svg>`;
+    const compressed = compressArtifactBodyForTranscript(body);
+    expect(compressed).toContain('d="[path-data-omitted]"');
+    expect(compressed).not.toContain(longPath);
+  });
+
+  it('preserves short SVG path data strings (<200 chars)', () => {
+    const shortPath = 'M10 10 H 90 V 90 H 10 Z';
+    const body = `<svg><path d="${shortPath}"></svg>`;
+    const compressed = compressArtifactBodyForTranscript(body);
+    expect(compressed).toContain(`d="${shortPath}"`);
+  });
+
+  it('strips long HTML comments and CSS comments inside style tags', () => {
+    const body = [
+      '<!-- ' + 'A'.repeat(100) + ' -->',
+      '<!-- short comment -->',
+      '<style>',
+      '  /* long css comment that describes layout in detail */',
+      '  .btn {   color:   red;   }',
+      '</style>',
+    ].join('\n');
+    const compressed = compressArtifactBodyForTranscript(body);
+    expect(compressed).not.toContain('A'.repeat(100));
+    expect(compressed).toContain('<!-- short comment -->');
+    expect(compressed).not.toContain('long css comment');
+    expect(compressed).toContain('.btn { color: red; }');
+  });
+});
+
+describe('compressArtifactsInTranscript', () => {
+  it('compresses artifact body while keeping surrounding wrapper intact', () => {
+    const input = [
+      'Assistant header',
+      '<artifact identifier="my-app" type="text/html" title="My App">',
+      '<img src="data:image/png;base64,' + 'B'.repeat(60) + '">',
+      '</artifact>',
+    ].join('\n');
+
+    const output = compressArtifactsInTranscript(input);
+    expect(output).toContain('<artifact identifier="my-app" type="text/html" title="My App">');
+    expect(output).toContain('[base64-data-omitted]');
+    expect(output).toContain('</artifact>');
+    expect(output).not.toContain('B'.repeat(60));
+  });
+});
+

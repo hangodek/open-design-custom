@@ -2128,7 +2128,7 @@ function OnboardingView({
   const [step, setStep] = useState(0);
   const [runtime, setRuntime] = useState<'amr' | 'local' | 'byok' | null>(null);
   const [runtimeSetupEntry, setRuntimeSetupEntry] = useState<'cloud' | 'chooser'>('chooser');
-  const [modelSource, setModelSource] = useState<'amr' | 'local' | 'byok'>('amr');
+  const [modelSource, setModelSource] = useState<'amr' | 'local' | 'byok'>('local');
   const modelSourceOptionRefs = useRef<
     Record<'amr' | 'local' | 'byok', HTMLButtonElement | null>
   >({ amr: null, local: null, byok: null });
@@ -3594,6 +3594,17 @@ function OnboardingView({
                       ? t('settings.onboardingCloudContinue')
                       : t('settings.onboardingCloudSignIn')}
               </span>
+            </button>
+            <button
+              type="button"
+              className="onboarding-cloud__cancel"
+              style={{ marginTop: '14px', cursor: 'pointer', fontSize: '13px' }}
+              onClick={() => {
+                setModelSource('local');
+                setStep(1);
+              }}
+            >
+              <span>Continue in Local Mode (Offline / BYOK) &rarr;</span>
             </button>
             {amrLoginError ? (
               <span className="onboarding-cloud__error" role="alert">

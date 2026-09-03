@@ -58,22 +58,152 @@ function findRealOpen(content: string, fromIndex: number, ranges: ReadonlyArray<
  * end-of-string when a tag is malformed or still streaming).
  */
 export function stripArtifact(content: string): string {
-  const { ranges: baseRanges, unclosedFenceStart } = computeSkipRanges(content);
-  // For complete (non-streaming) content, an unclosed fence is rendered by
-  // the chat Markdown renderer as a code block extending to end of input
-  // (see runtime/markdown.tsx:49 — the close-loop runs until lines exhaust).
-  // The stripper has to mirror that, otherwise a literal `<artifact …>`
-  // tucked into a code example at the bottom of a chat reply (no trailing
-  // newline) gets treated as a real protocol tag and eaten.
-  const ranges: Range[] =
-    unclosedFenceStart !== null ? [...baseRanges, [unclosedFenceStart, content.length]] : baseRanges;
-  const open = findRealOpen(content, 0, ranges);
-  if (open === -1) return content;
-  const closeTag = content.indexOf('>', open);
-  if (closeTag === -1) return content;
-  const end = findUnskipped(content, CLOSE, closeTag, ranges);
-  if (end === -1) return content;
-  return (content.slice(0, open) + content.slice(end + CLOSE.length)).trim();
+  let result = content;
+  while (true) {
+    const { ranges: baseRanges, unclosedFenceStart } = computeSkipRanges(result);
+    const ranges: Range[] =
+      unclosedFenceStart !== null ? [...baseRanges, [unclosedFenceStart, result.length]] : baseRanges;
+    const open = findRealOpen(result, 0, ranges);
+    if (open === -1) break;
+    const closeTag = result.indexOf('>', open);
+    if (closeTag === -1) break;
+    const end = findUnskipped(result, CLOSE, closeTag, ranges);
+    if (end === -1) break;
+    result = (result.slice(0, open) + result.slice(end + CLOSE.length)).trim();
+  }
+  return result;
+}
+
+/**
+ * Extract all real `<artifact ...>...</artifact>` blocks from `content`.
+ */
+export function extractRawArtifactBlocks(content: string): string[] {
+  const blocks: string[] = [];
+  let cursor = 0;
+  while (cursor <= content.length) {
+    const tail = content.slice(cursor);
+    const { ranges: baseRanges, unclosedFenceStart } = computeSkipRanges(tail);
+    const ranges: Range[] =
+      unclosedFenceStart !== null ? [...baseRanges, [unclosedFenceStart, tail.length]] : baseRanges;
+    const open = findRealOpen(tail, 0, ranges);
+    if (open === -1) break;
+    const closeTag = tail.indexOf('>', open);
+    if (closeTag === -1) break;
+    const end = findUnskipped(tail, CLOSE, closeTag, ranges);
+    if (end === -1) break;
+    blocks.push(tail.slice(open, end + CLOSE.length));
+    cursor += end + CLOSE.length;
+  }
+  return blocks;
+}
+
+/**
+ * Replace older superseded versions of artifacts with a compact placeholder,
+ * ensuring only the latest version of each artifact retains its full code in multi-turn history.
+ */
+export function stripSupersededArtifacts(
+  content: string,
+  seenKeys: Set<string>,
+): string {
+  let result = '';
+  let cursor = 0;
+  while (cursor <= content.length) {
+    const tail = content.slice(cursor);
+    const { ranges: baseRanges, unclosedFenceStart } = computeSkipRanges(tail);
+    const ranges: Range[] =
+      unclosedFenceStart !== null ? [...baseRanges, [unclosedFenceStart, tail.length]] : baseRanges;
+    const open = findRealOpen(tail, 0, ranges);
+    if (open === -1) {
+      result += tail;
+      break;
+    }
+    const closeTag = tail.indexOf('>', open);
+    if (closeTag === -1) {
+      result += tail;
+      break;
+    }
+    const end = findUnskipped(tail, CLOSE, closeTag, ranges);
+    if (end === -1) {
+      result += tail;
+      break;
+    }
+    const attrs = parseArtifactAttrs(tail.slice(open, closeTag));
+    const key = (attrs['identifier'] || attrs['title'] || 'artifact').toLowerCase();
+    if (seenKeys.has(key)) {
+      result += tail.slice(0, open) + `[artifact "${key}" emitted on this prior turn is superseded by the newer version in a later turn.]`;
+    } else {
+      seenKeys.add(key);
+      result += tail.slice(0, end + CLOSE.length);
+    }
+    cursor += end + CLOSE.length;
+  }
+  return result;
+}
+
+/**
+ * Compress an artifact's HTML body for transcript delivery.
+ * Removes bulk data that wastes tokens without aiding revision:
+ *   - base64 data URIs (images, fonts)
+ *   - Long SVG path `d="..."` data strings (>200 chars)
+ *   - HTML comments longer than 80 chars
+ *   - CSS comment blocks inside <style> tags
+ *   - Excessive blank lines and whitespace inside CSS
+ */
+export function compressArtifactBodyForTranscript(html: string): string {
+  let result = html
+    // Strip base64 data URIs (images, fonts, etc.)
+    .replace(/data:[a-z/+]+;base64,[A-Za-z0-9+/=]{40,}/g, '[base64-data-omitted]')
+    // Strip long SVG path data strings
+    .replace(/\bd="[^"]{200,}"/g, 'd="[path-data-omitted]"')
+    // Strip HTML comments longer than 80 chars (short structural ones preserved)
+    .replace(/<!--[\s\S]{80,}?-->/g, '')
+    // Collapse 3+ blank lines to 1
+    .replace(/(\n\s*){3,}/g, '\n\n');
+
+  // Strip CSS comments inside <style> tags and collapse multi-spaces
+  result = result.replace(/(<style[^>]*>)(.*?)(<\/style>)/gis, (_match, open, cssBody, close) => {
+    const cleanedCss = cssBody
+      .replace(/\/\*.*?\*\//gs, '')
+      .replace(/[ \t]{2,}/g, ' ');
+    return `${open}${cleanedCss}${close}`;
+  });
+
+  return result;
+}
+
+/**
+ * Apply compressArtifactBodyForTranscript to every real artifact block in content.
+ */
+export function compressArtifactsInTranscript(content: string): string {
+  let result = '';
+  let cursor = 0;
+  while (cursor <= content.length) {
+    const tail = content.slice(cursor);
+    const { ranges: baseRanges, unclosedFenceStart } = computeSkipRanges(tail);
+    const ranges: Range[] =
+      unclosedFenceStart !== null ? [...baseRanges, [unclosedFenceStart, tail.length]] : baseRanges;
+    const open = findRealOpen(tail, 0, ranges);
+    if (open === -1) {
+      result += tail;
+      break;
+    }
+    const closeTag = tail.indexOf('>', open);
+    if (closeTag === -1) {
+      result += tail;
+      break;
+    }
+    const end = findUnskipped(tail, CLOSE, closeTag, ranges);
+    if (end === -1) {
+      result += tail;
+      break;
+    }
+    const openTag = tail.slice(open, closeTag + 1);
+    const body = tail.slice(closeTag + 1, end);
+    const compressed = compressArtifactBodyForTranscript(body);
+    result += tail.slice(0, open) + openTag + compressed + CLOSE;
+    cursor += end + CLOSE.length;
+  }
+  return result;
 }
 
 function findSingleRecoverableHtmlFence(content: string): MarkdownFenceRange | null {
@@ -339,36 +469,49 @@ export function splitStreamingArtifact(content: string): {
   head: string;
   live: StreamingArtifact | null;
 } {
-  const { ranges: baseRanges, unclosedFenceStart } = computeSkipRanges(content);
-  const ranges: Range[] =
-    unclosedFenceStart !== null ? [...baseRanges, [unclosedFenceStart, content.length]] : baseRanges;
-  const open = findRealOpen(content, 0, ranges);
-  if (open === -1) return { head: content, live: null };
-  const gt = content.indexOf('>', open);
-  if (gt === -1) {
-    // The open tag's attributes are still streaming — we can't read the type
-    // or title yet, but we already know an artifact is starting, so show the
-    // box (empty body) and hide the partial `<artifact …` tail from Markdown.
+  let remaining = content;
+  let accumulatedHead = '';
+  while (true) {
+    const { ranges: baseRanges, unclosedFenceStart } = computeSkipRanges(remaining);
+    const ranges: Range[] =
+      unclosedFenceStart !== null ? [...baseRanges, [unclosedFenceStart, remaining.length]] : baseRanges;
+    const open = findRealOpen(remaining, 0, ranges);
+    if (open === -1) {
+      return { head: content, live: null };
+    }
+    const gt = remaining.indexOf('>', open);
+    if (gt === -1) {
+      // The open tag's attributes are still streaming — we can't read the type
+      // or title yet, but we already know an artifact is starting, so show the
+      // box (empty body) and hide the partial `<artifact …` tail from Markdown.
+      return {
+        head: (accumulatedHead + remaining.slice(0, open)).replace(/\s+$/, ''),
+        live: { artifactType: '', title: '', identifier: '', content: '' },
+      };
+    }
+    const closePos = findUnskipped(remaining, CLOSE, gt, ranges);
+    if (closePos !== -1) {
+      // A matching close means this block is complete; advance past it and keep scanning.
+      accumulatedHead += remaining.slice(0, open);
+      remaining = remaining.slice(closePos + CLOSE.length);
+      continue;
+    }
+    const attrs = parseArtifactAttrs(remaining.slice(open, gt));
+    const artifactType = attrs['type'] ?? '';
+    // Only HTML/text artifacts read as code. An unknown type (attrs not fully
+    // parsed, or omitted) is treated as code-eligible since the dominant case is
+    // text/html; media/binary types fall through and render as raw text.
+    if (artifactType && !/html|text\//i.test(artifactType)) {
+      return { head: content, live: null };
+    }
     return {
-      head: content.slice(0, open).replace(/\s+$/, ''),
-      live: { artifactType: '', title: '', identifier: '', content: '' },
+      head: (accumulatedHead + remaining.slice(0, open)).replace(/\s+$/, ''),
+      live: {
+        artifactType,
+        title: attrs['title'] ?? '',
+        identifier: attrs['identifier'] ?? '',
+        content: remaining.slice(gt + 1),
+      },
     };
   }
-  // A matching close means the block is complete; defer to stripArtifact.
-  if (findUnskipped(content, CLOSE, gt, ranges) !== -1) return { head: content, live: null };
-  const attrs = parseArtifactAttrs(content.slice(open, gt));
-  const artifactType = attrs['type'] ?? '';
-  // Only HTML/text artifacts read as code. An unknown type (attrs not fully
-  // parsed, or omitted) is treated as code-eligible since the dominant case is
-  // text/html; media/binary types fall through and render as raw text.
-  if (artifactType && !/html|text\//i.test(artifactType)) return { head: content, live: null };
-  return {
-    head: content.slice(0, open).replace(/\s+$/, ''),
-    live: {
-      artifactType,
-      title: attrs['title'] ?? '',
-      identifier: attrs['identifier'] ?? '',
-      content: content.slice(gt + 1),
-    },
-  };
 }

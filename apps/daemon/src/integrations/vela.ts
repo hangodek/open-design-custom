@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
@@ -430,7 +430,30 @@ export function amrConfigPath(): string {
   return path.join(configDir(), 'config.json');
 }
 
+export function ensureSecureAmrConfigPermissions(): void {
+  if (process.platform === 'win32') return;
+  try {
+    const dir = configDir();
+    if (existsSync(dir)) {
+      const dirStat = statSync(dir);
+      if ((dirStat.mode & 0o077) !== 0) {
+        chmodSync(dir, 0o700);
+      }
+    }
+    const file = amrConfigPath();
+    if (existsSync(file)) {
+      const fileStat = statSync(file);
+      if ((fileStat.mode & 0o077) !== 0) {
+        chmodSync(file, 0o600);
+      }
+    }
+  } catch {
+    // Best-effort security fix; ignore if non-fatal
+  }
+}
+
 function readConfigFile(): VelaConfigFileShape | null {
+  ensureSecureAmrConfigPermissions();
   const file = amrConfigPath();
   if (!existsSync(file)) return null;
   try {
@@ -1265,6 +1288,7 @@ interface SpawnVelaLoginAttemptDeps extends SpawnVelaLoginDeps {
 async function spawnVelaLoginAttempt(
   deps: SpawnVelaLoginAttemptDeps,
 ): Promise<SpawnedVelaLogin> {
+  ensureSecureAmrConfigPermissions();
   const attemptState = currentVelaLoginAttempt(deps.attempt);
   if (!attemptState) throw new Error('vela login attempt is no longer active');
   if (hasRunningVelaLoginChild()) throw new Error('vela login already running');
